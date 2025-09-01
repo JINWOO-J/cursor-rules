@@ -1,0 +1,15 @@
+---
+globs: Dockerfile,*.Dockerfile
+description: Dockerfile best practices for this repo
+---
+# Dockerfile Guidelines
+
+- Prefer multi-stage builds to reduce final image size.
+- Pin base images to a specific tag (and digest when appropriate).
+- Avoid running as root; create and switch to a non-root user.
+- Order layers to maximize cache hits; put dependency installation before app code copy.
+- Copy only necessary files; exclude development artifacts.
+- Provide a sensible default `CMD` and consider a `HEALTHCHECK` if applicable.
+- Set environment variables explicitly (e.g., `NODE_ENV=production` for Node-based images).
+- Example: [sample.Dockerfile](mdc:sample.Dockerfile)
+

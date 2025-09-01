@@ -1,0 +1,15 @@
+---
+globs: *.md
+description: Markdown documentation style guide for this repo
+---
+# Markdown Style
+
+- Use ATX headers (`#`, `##`, `###`) in proper order; one `#` title per file.
+- Keep lines concise; wrap around 100 characters when practical.
+- Use code ticks for files, functions, and commands (e.g., `Makefile`, `npm run dev`).
+- Use fenced code blocks with language tags (e.g., ```bash, ```javascript) and minimal comments.
+- Prefer relative links with descriptive anchor text; avoid bare URLs.
+- Tables only when they add clarity; otherwise prefer short bullet lists.
+- Be concise and task-oriented; place additional context after the main instruction.
+- Dates/times: ISO format `YYYY-MM-DD HH:mm:ss` (Asia/Seoul).
+

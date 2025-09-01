@@ -16,13 +16,13 @@ Thumbs.db
 *.swo
 
 # Generated files
-.cursorrules/generated/
-.cursorrules.md
+#.cursorrules/generated/
+#.cursorrules.md
 
 # Environment files
-.env
-.env.local
-.env.*.local
+#.env
+#.env.local
+#.env.*.local
 
 # Logs
 *.log
@@ -37,3 +37,5 @@ node_modules/
 # Python bytecode
 *.pyc
 __pycache__/
+PRD.md
+QWEN.md

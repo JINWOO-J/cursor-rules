@@ -1,0 +1,18 @@
+---
+alwaysApply: true
+description: Project structure overview and key entry points
+---
+# Project Structure
+
+- Primary docs: [README.md](mdc:README.md), [PRD.md](mdc:PRD.md), [CONTRIBUTING.md](mdc:CONTRIBUTING.md)
+- Build tasks: [Makefile](mdc:Makefile)
+- Sample component: [sample-react-component.js](mdc:sample-react-component.js)
+- Container example: [sample.Dockerfile](mdc:sample.Dockerfile)
+
+Guidelines
+
+- Keep example source files at the repository root for simplicity; production code should live under a future `src/` directory with domain-driven subfolders (e.g., `components/`, `lib/`, `api/`).
+- Store project documentation in the `docs/` directory. High-level product details are in [PRD.md](mdc:PRD.md).
+- Prefer descriptive filenames. Co-locate small helpers with their primary consumer; extract to `lib/` when shared.
+- Use `README.md` to describe how to run, build, and contribute.
+

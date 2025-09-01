@@ -1,0 +1,20 @@
+---
+globs: *.js,*.jsx
+description: JavaScript and React style conventions for this repo
+---
+# JavaScript & React Style
+
+- Use ES Modules (`import`/`export`).
+- Prefer function components and React Hooks; avoid class components.
+- Semicolons required; 2-space indent; single quotes; trailing commas where valid.
+- Named exports preferred; default export only when a file exposes a single main thing.
+- File naming: `PascalCase.jsx` for components, `kebab-case.js` for utilities.
+- Organize imports: 1) node/externals, 2) workspace modules, 3) relative paths. Keep groups separated by a blank line.
+- Components
+  - Keep components pure; derive UI from props/state.
+  - Side effects in `useEffect`; memoize heavy calculations with `useMemo` and event handlers with `useCallback` when profiling indicates value.
+  - Event handlers named `handleX` (e.g., `handleSubmit`).
+  - Co-locate lightweight helpers and styles with the component file.
+- Public APIs (utilities/components) should include minimal JSDoc for params/returns.
+- Example component: [sample-react-component.js](mdc:sample-react-component.js)
+
