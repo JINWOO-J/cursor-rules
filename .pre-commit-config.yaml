@@ -1,0 +1,12 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: detect-private-key
+      - id: check-merge-conflict
+  - repo: local
+    hooks:
+      - id: cursor-rules
+        name: Generate & Check Cursor Rules
+        entry: bash -c 'make rules-generate'
+        language: system

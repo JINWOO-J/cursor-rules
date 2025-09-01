@@ -1,0 +1,39 @@
+# Cursor Rules Project .gitignore
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Generated files
+.cursorrules/generated/
+.cursorrules.md
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# Temporary files
+.tmp
+.temp
+
+# Node.js dependencies (if any)
+node_modules/
+
+# Python bytecode
+*.pyc
+__pycache__/
