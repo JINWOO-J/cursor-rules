@@ -11,6 +11,8 @@ on:
 jobs:
   generate-list:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -51,8 +53,7 @@ jobs:
               while IFS= read -r -d '' file; do
                 echo "파일 찾음: $file"
                 FILE_FOUND=true
-                if [ "$FIRST" = true ]; then
-                  FIRST=false
+                if [ "$FIRST" = true ]; true
                 else
                   echo "," >> web/files.json
                 fi
