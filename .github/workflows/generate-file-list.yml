@@ -80,6 +80,47 @@ jobs:
           echo "Generated files.json:"
           cat web/files.json
 
+
+      - name: Copy cursor-rules directory to web directory
+        run: |        
+          echo "Copied cursor-rules directory to web directory"
+          
+          # cursor-rules 디렉토리가 존재하는 경우에만 복사
+          if [ -d "cursor-rules" ]; then
+            # web/cursor-rules 디렉토리가 이미 존재하면 삭제
+            if [ -d "web/cursor-rules" ]; then
+              rm -rf web/cursor-rules
+            fi
+            cp -r cursor-rules web/
+            echo "Copied cursor-rules directory to web directory"
+          else
+            echo "cursor-rules directory not found, skipping copy"
+          fi
+                    
+      - name: Generate version-info.json
+        run: |
+          cat > web/version-info.json <<EOF
+          {
+            "last_commit_id": "$(git rev-parse HEAD)",
+            "last_commit_message": "$(git log -1 --pretty=%B | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/"/\\"/g')",
+            "branch": "${GITHUB_REF#refs/heads/}",
+            "committed_at": "$(git log -1 --format=%cI)",
+            "generated_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          echo "Generated version-info.json"
+
+      - name: Verify copied files
+        run: |
+          ls -l web/files.json
+          if [ -d "web/cursor-rules" ]; then
+            ls -l web/cursor-rules
+          fi
+          ls -l web/version-info.json
+          echo "=== Content of version-info.json ==="
+          cat web/version-info.json
+          echo "===================================="
+                    
       - name: Commit and push changes
         run: |
           # Git 사용자 정보 설정
