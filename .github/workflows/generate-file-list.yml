@@ -55,6 +55,12 @@ jobs:
                 first_file=false
                 
                 # GitHub raw URL 형식: https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}
+                echo "GITHUB_REPOSITORY: ${GITHUB_REPOSITORY}"
+                echo "GITHUB_REF_NAME: ${GITHUB_REF_NAME}"
+                echo "file: ${file}"
+                
+                echo "--------------------------------"
+
                 RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}/${file}"
                 echo "{\"path\":\"$file\",\"raw_url\":\"$RAW_URL\"}" >> web/files.json
               done < <(find "$dir" -type f -name "*.md" -print0)
