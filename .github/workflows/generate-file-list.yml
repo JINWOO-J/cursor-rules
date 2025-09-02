@@ -1,0 +1,65 @@
+name: Generate Markdown File List
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.cursorrules/**'
+  workflow_dispatch:
+
+jobs:
+  generate-list:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate file list
+        run: |
+          # 필요한 디렉터리 정의
+          MD_DIRS=(
+            ".cursorrules"
+            ".cursorrules/common"
+            ".cursorrules/project"
+            ".cursorrules/generated"
+            ".cursorrules/common/stacks"
+          )
+          
+          # JSON 배열 시작
+          echo "[" > web/files.json
+          
+          FIRST=true
+          # 각 디렉터리에서 .md 파일 찾기
+          for dir in "${MD_DIRS[@]}"; do
+            if [ -d "$dir" ]; then
+              find "$dir" -type f -name "*.md" | while read -r file; do
+                if [ "$FIRST" = true ]; then
+                  FIRST=false
+                else
+                  echo "," >> web/files.json
+                fi
+                
+                # 파일 정보 생성
+                # GitHub raw URL 형식: https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}
+                # GITHUB_REPOSITORY와 GITHUB_REF_NAME 환경변수는 GitHub Actions에서 자동 제공
+                RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}/${file}"
+                echo "{\"path\":\"$file\",\"raw_url\":\"$RAW_URL\"}" >> web/files.json
+              done
+            fi
+          done
+          
+          # JSON 배열 끝
+          echo "]" >> web/files.json
+          
+          # 생성된 파일 내용 확인
+          echo "Generated files.json:"
+          cat web/files.json
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add web/files.json
+          git commit -m "Update files.json" || echo "No changes to commit"
+          git push

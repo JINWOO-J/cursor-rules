@@ -12,6 +12,7 @@
 - [사용 방법](#사용-방법)
 - [규칙 추가 방법](#규칙-추가-방법)
 - [Prompt Recipes](#prompt-recipes)
+- [웹 기반 Builder 도구](#웹-기반-builder-도구)
 - [CI/CD 통합](#cicd-통합)
 - [기여하기](#기여하기)
 - [라이선스](#라이선스)
@@ -97,6 +98,37 @@ Cursor는 강력한 AI 기반 코드 편집기입니다. 하지만 팀 내에서
 - **React 청크 최적화**: "폰트/아이콘 리소스는 분리 로딩, unicons는 TTF/EOT 제외, WOFF2 우선. 전/후 번들 사이즈 표와 타임라인 하이라이트를 보여줘."
 - **Prisma 마이그레이션 검토**: "컴포지트 키/관계 명명 규칙 준수 여부, 다운 마이그레이션 경로, 위험도(High/Medium/Low) 3단계로 리뷰 요약."
 - **Python 3.13 FastAPI 보일러플레이트**: "mypy --strict 통과, pydantic v2, 동기/비동기 혼용 금지, 라우터/스키마/서비스 레이어 모듈 분리 스캐폴딩 생성."
+
+## 웹 기반 Builder 도구
+
+이 프로젝트는 웹 기반 Builder 도구를 제공하여, Markdown 형식의 규칙 파일을 `.mdc` 형식으로 쉽게 변환하고 관리할 수 있습니다. 이 도구는 정적 웹 페이지로 제공되며, GitHub Actions를 통해 자동으로 배포됩니다.
+
+### 작동 방식
+
+1.  **md 수정**: 팀원이 `.cursorrules` 디렉토리 내의 Markdown 파일을 수정합니다.
+2.  **github repo push**: 수정된 파일을 GitHub 저장소에 푸시합니다.
+3.  **static 웹 배포**: GitHub Actions 워크플로우가 자동으로 실행되어 `web/files.json` 파일을 생성하고, GitHub Pages를 통해 웹 페이지를 배포합니다.
+4.  **사용자 선택**: 사용자가 웹 페이지에 접속하여 필요한 Markdown 파일을 선택합니다.
+5.  **복붙**: Builder 도구가 선택된 파일의 내용을 기반으로 `.mdc` 형식의 규칙을 생성하고, 사용자는 이를 복사하여 사용할 수 있습니다.
+
+### 웹 페이지 사용법
+
+1.  GitHub Pages URL (예: `https://<username>.github.io/cursor-rules/`)로 접속합니다.
+2.  "규칙 추가" 버튼을 클릭하여 새로운 규칙 카드를 생성합니다.
+3.  파일 선택 드롭다운에서 원하는 Markdown 파일을 선택합니다.
+4.  "파일 내용 불러오기" 버튼을 클릭하여 파일의 내용을 불러옵니다.
+5.  필요에 따라 설명, Scope, globs 등을 수정합니다.
+6.  "미리보기" 버튼을 클릭하여 생성된 `.mdc` 파일의 내용을 확인합니다.
+7.  "내용 복사" 또는 ".mdc 저장" 버튼을 사용하여 결과물을 가져옵니다.
+
+### GitHub Actions 워크플로우
+
+`.github/workflows/generate-file-list.yml` 파일은 다음과 같은 역할을 합니다:
+
+-   `main` 브랜치에 변경 사항이 푸시되거나, 수동으로 실행되면 작동합니다.
+-   `.cursorrules` 디렉토리 및 하위 디렉토리에서 `.md` 파일을 찾아 `web/files.json` 파일을 생성합니다.
+-   생성된 `web/files.json` 파일을 커밋하고 푸시합니다.
+-   GitHub Pages 설정이 되어 있다면, 웹 페이지가 자동으로 업데이트됩니다.
 
 ## CI/CD 통합
 
