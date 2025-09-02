@@ -93,8 +93,8 @@ jobs:
           if [ -f "web/files.json" ]; then
             echo "web/files.json 파일이 존재합니다."
             git add web/files.json
-            git commit -m "Update files.json" || echo "No changes to commit"
-            git push
+            git commit -m "Update files.json"
+            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           else
             echo "web/files.json 파일이 존재하지 않습니다."
           fi
