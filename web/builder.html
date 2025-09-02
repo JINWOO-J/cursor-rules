@@ -33,12 +33,78 @@
     .footer-actions { display: flex; gap: 10px; flex-wrap: wrap; }
     code.inline { background: #0c1527; padding: 2px 6px; border-radius: 6px; border:1px solid #22365c; }
     .out { white-space: pre; background: #0c1527; padding: 12px; border:1px solid #22365c; border-radius: 10px; overflow:auto; }
+    
+    /* 검색 가능한 selectbox 스타일 */
+    .searchable-select {
+      position: relative;
+    }
+    .searchable-select select {
+      display: none;
+    }
+    .select-selected {
+      background-color: #0c1527;
+      border: 1px solid #29406c;
+      border-radius: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+    }
+    .select-selected:after {
+      position: absolute;
+      content: "";
+      top: 50%;
+      right: 10px;
+      width: 0;
+      height: 0;
+      border: 6px solid transparent;
+      border-color: #e8eefb transparent transparent transparent;
+      transform: translateY(-50%);
+    }
+    .select-selected.select-arrow-active:after {
+      border-color: transparent transparent #e8eefb transparent;
+      top: 20%;
+    }
+    .select-items {
+      position: absolute;
+      background-color: #0c1527;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 99;
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #29406c;
+      border-top: none;
+      border-radius: 0 0 10px 10px;
+    }
+    .select-hide {
+      display: none;
+    }
+    .select-items div {
+      padding: 10px 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .select-items div:hover, .same-as-selected {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+    .select-search {
+      padding: 10px 12px;
+      border: none;
+      border-bottom: 1px solid #29406c;
+      background-color: #0c1527;
+      color: #e8eefb;
+      width: 100%;
+      outline: none;
+    }
   </style>
 </head>
 <body>
   <header>
     <h1>Cursor Rules Builder <span class="sub">— ".mdc" 파일을 만들어 <code class="inline">.cursor/rules</code>에 붙여넣기</span></h1>
     <div class="sub">오프라인 단일 HTML. 공통/프로젝트 지침을 입력하고, frontmatter(<code class="inline">alwaysApply</code>, <code class="inline">globs</code>)가 포함된 .mdc를 생성합니다.</div>
+    <div id="version-info" class="sub" style="margin-top: 8px; font-size: 12px; opacity: 0.7;"></div>
   </header>
 
   <main>
@@ -49,6 +115,15 @@
         <button class="btn" id="loadPresets">프리셋 불러오기</button>
         <button class="btn" id="downloadAll">모든 규칙 .mdc 저장</button>
         <button class="btn ghost" id="clearAll">초기화</button>
+        
+        <!-- files.json 키 선택 옵션 추가 -->
+        <div class="field" style="margin-left: auto;">
+          <label>files.json 키 선택</label>
+          <select id="fileKeySelector">
+            <option value="path" selected>path</option>
+            <option value="raw_url">raw_url</option>
+          </select>
+        </div>
       </div>
       <div class="muted" style="margin-top:8px;">TIP: 공통 규칙은 <span class="hl">Scope = Always</span>로 설정하면 전 리포에서 항상 로드됩니다. 프로젝트 특화 규칙은 보통 <span class="hl">Scope = Auto</span>로 두고, <code class="inline">globs</code>는 <code class="inline">**/*</code>로 유지하세요.</div>
     </section>
@@ -63,9 +138,15 @@
       <div class="fields">
         <div class="field">
           <label>파일명 (.mdc)</label>
-          <select class="f-name">
-            <option value="">-- 파일을 선택하세요 --</option>
-          </select>
+          <div class="searchable-select">
+            <select class="f-name">
+              <option value="">-- 파일을 선택하세요 --</option>
+            </select>
+            <div class="select-selected">-- 파일을 선택하세요 --</div>
+            <div class="select-items select-hide">
+              <input type="text" class="select-search" placeholder="검색...">
+            </div>
+          </div>
           <button type="button" class="btn" style="margin-top: 5px;" data-action="load-file-content">파일 내용 불러오기</button>
         </div>
         <div class="field">
@@ -105,11 +186,111 @@
   <script>
     const $rules = document.getElementById('rules');
     const tmpl = document.getElementById('ruleTmpl');
+    const fileKeySelector = document.getElementById('fileKeySelector');
+    let currentFileKey = 'path';
 
     // 페이지 로드 시 파일 목록 가져오기
     document.addEventListener('DOMContentLoaded', async () => {
         await loadMdFileList();
+        await loadVersionInfo(); // 버전 정보 로드
+        initSearchableSelects();
     });
+
+    // 버전 정보 로드 및 표시
+    async function loadVersionInfo() {
+        try {
+            const response = await fetch('version-info.json');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const versionInfo = await response.json();
+            
+            const versionInfoDiv = document.getElementById('version-info');
+            versionInfoDiv.innerHTML = `
+                <div>Branch: <strong>${versionInfo.branch}</strong></div>
+                <div>Last Commit: <strong>${versionInfo.last_commit_id.substring(0, 7)}</strong> (${new Date(versionInfo.committed_at).toLocaleString()})</div>
+                <div>Message: ${versionInfo.last_commit_message}</div>
+                <div>Generated: ${new Date(versionInfo.generated_at).toLocaleString()}</div>
+            `;
+        } catch (error) {
+            console.error('버전 정보를 불러오는 중 오류 발생:', error);
+            // 오류 발생 시 버전 정보 영역 숨기기
+            const versionInfoDiv = document.getElementById('version-info');
+            versionInfoDiv.style.display = 'none';
+        }
+    }
+
+    // files.json 키 선택 변경 이벤트
+    fileKeySelector.addEventListener('change', (e) => {
+        currentFileKey = e.target.value;
+        loadMdFileList();
+    });
+
+    // 검색 가능한 selectbox 초기화
+    function initSearchableSelects() {
+        const selects = document.querySelectorAll('.searchable-select');
+        selects.forEach(selectDiv => {
+            const selectedDiv = selectDiv.querySelector('.select-selected');
+            const itemsDiv = selectDiv.querySelector('.select-items');
+            const searchInput = itemsDiv.querySelector('.select-search');
+            const selectElement = selectDiv.querySelector('select');
+            
+            selectedDiv.addEventListener('click', (e) => {
+                e.stopPropagation();
+                closeAllSelect(this);
+                itemsDiv.classList.toggle('select-hide');
+                selectedDiv.classList.toggle('select-arrow-active');
+            });
+            
+            searchInput.addEventListener('input', (e) => {
+                const filter = e.target.value.toUpperCase();
+                const items = itemsDiv.querySelectorAll('div:not(.select-search)');
+                items.forEach(item => {
+                    const txtValue = item.textContent || item.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        item.style.display = "";
+                    } else {
+                        item.style.display = "none";
+                    }
+                });
+            });
+            
+            const options = selectElement.querySelectorAll('option');
+            options.forEach(option => {
+                if (option.value) {
+                    const item = document.createElement('DIV');
+                    item.innerHTML = option.innerHTML;
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        selectedDiv.innerHTML = option.innerHTML;
+                        selectElement.value = option.value;
+                        closeAllSelect();
+                    });
+                    itemsDiv.appendChild(item);
+                }
+            });
+        });
+        
+        document.addEventListener('click', closeAllSelect);
+    }
+    
+    function closeAllSelect(elmnt) {
+        const arrNo = [];
+        const selectSelected = document.querySelectorAll('.select-selected');
+        const selectItems = document.querySelectorAll('.select-items');
+        for (let i = 0; i < selectSelected.length; i++) {
+            if (elmnt == selectSelected[i]) {
+                arrNo.push(i)
+            } else {
+                selectSelected[i].classList.remove('select-arrow-active');
+            }
+        }
+        for (let i = 0; i < selectItems.length; i++) {
+            if (arrNo.indexOf(i)) {
+                selectItems[i].classList.add('select-hide');
+            }
+        }
+    }
 
     // .md 파일 목록 가져오기 (정적 JSON 파일 사용)
     async function loadMdFileList() {
@@ -121,34 +302,87 @@
             const files = await response.json();
             
             // 템플릿의 select 요소에 파일 목록 추가 (새로 추가되는 규칙용)
-            const templateSelects = tmpl.content.querySelectorAll('select.f-name');
-            templateSelects.forEach(templateSelect => {
+            const templateSelects = tmpl.content.querySelectorAll('.searchable-select');
+            templateSelects.forEach(templateSelectDiv => {
+                const selectElement = templateSelectDiv.querySelector('select');
+                const selectedDiv = templateSelectDiv.querySelector('.select-selected');
+                const itemsDiv = templateSelectDiv.querySelector('.select-items');
+                
                 // 기존 옵션 제거 (기본 옵션 제외)
-                while (templateSelect.options.length > 1) {
-                    templateSelect.remove(1);
+                while (selectElement.options.length > 1) {
+                    selectElement.remove(1);
                 }
-                // 새 파일 목록 추가 (path만 표시)
+                // 기존 항목 제거 (검색 입력 제외)
+                const searchInput = itemsDiv.querySelector('.select-search');
+                itemsDiv.innerHTML = '';
+                itemsDiv.appendChild(searchInput);
+                
+                // 새 파일 목록 추가
                 files.forEach(file => {
                     const option = document.createElement('option');
-                    option.value = file.path;
+                    option.value = file[currentFileKey];
                     option.textContent = file.path;
-                    templateSelect.appendChild(option);
+                    selectElement.appendChild(option);
+                    
+                    const item = document.createElement('DIV');
+                    item.innerHTML = file.path;
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        selectedDiv.innerHTML = file.path;
+                        selectElement.value = file[currentFileKey];
+                        closeAllSelect();
+                    });
+                    itemsDiv.appendChild(item);
                 });
+                
+                // 기본 선택값 설정
+                selectedDiv.innerHTML = "-- 파일을 선택하세요 --";
+                selectElement.value = "";
             });
             
             // 모든 규칙 카드의 select 요소에 파일 목록 추가
-            document.querySelectorAll('.rule select.f-name').forEach(select => {
+            document.querySelectorAll('.rule .searchable-select').forEach(selectDiv => {
+                const selectElement = selectDiv.querySelector('select');
+                const selectedDiv = selectDiv.querySelector('.select-selected');
+                const itemsDiv = selectDiv.querySelector('.select-items');
+                
                 // 기존 옵션 제거 (기본 옵션 제외)
-                while (select.options.length > 1) {
-                    select.remove(1);
+                while (selectElement.options.length > 1) {
+                    selectElement.remove(1);
                 }
-                // 새 파일 목록 추가 (path만 표시)
+                // 기존 항목 제거 (검색 입력 제외)
+                const searchInput = itemsDiv.querySelector('.select-search');
+                itemsDiv.innerHTML = '';
+                itemsDiv.appendChild(searchInput);
+                
+                // 새 파일 목록 추가
                 files.forEach(file => {
                     const option = document.createElement('option');
-                    option.value = file.path;
+                    option.value = file[currentFileKey];
                     option.textContent = file.path;
-                    select.appendChild(option);
+                    selectElement.appendChild(option);
+                    
+                    const item = document.createElement('DIV');
+                    item.innerHTML = file.path;
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        selectedDiv.innerHTML = file.path;
+                        selectElement.value = file[currentFileKey];
+                        closeAllSelect();
+                    });
+                    itemsDiv.appendChild(item);
                 });
+                
+                // 현재 선택값 유지 또는 기본값 설정
+                const currentValue = selectElement.value;
+                if (currentValue) {
+                    const currentOption = Array.from(selectElement.options).find(opt => opt.value === currentValue);
+                    if (currentOption) {
+                        selectedDiv.innerHTML = currentOption.textContent;
+                    }
+                } else {
+                    selectedDiv.innerHTML = "-- 파일을 선택하세요 --";
+                }
             });
         } catch (error) {
             console.error('파일 목록을 불러오는 중 오류 발생:', error);
@@ -158,7 +392,7 @@
     function escapeYaml(str){
       if (!str) return '';
       // escape double quotes, newlines aren't used in description
-      return String(str).replace(/"/g, '"');
+      return String(str).replace(/"/g, '\\"');
     }
 
     function buildFrontmatter({desc, scope, globs}){
@@ -169,7 +403,7 @@
         lines.push('globs:');
         // support comma or whitespace separated patterns
         const parts = globs.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
-        for (const p of parts){ lines.push(`  - "${p.replace(/"/g, '"')}"`); }
+        for (const p of parts){ lines.push(`  - "${p.replace(/"/g, '\\"')}"`); }
       }
       lines.push('---');
       return lines.join('\n');
@@ -201,34 +435,6 @@
       a.remove(); URL.revokeObjectURL(url);
     }
 
-    // .md 파일 목록 가져오기
-    async function loadMdFileList() {
-        try {
-            const response = await fetch('/list-md-files');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const files = await response.json();
-            
-            // 모든 규칙 카드의 select 요소에 파일 목록 추가
-            document.querySelectorAll('.rule select.f-name').forEach(select => {
-                // 기존 옵션 제거 (기본 옵션 제외)
-                while (select.options.length > 1) {
-                    select.remove(1);
-                }
-                // 새 파일 목록 추가
-                files.forEach(file => {
-                    const option = document.createElement('option');
-                    option.value = file;
-                    option.textContent = file;
-                    select.appendChild(option);
-                });
-            });
-        } catch (error) {
-            console.error('파일 목록을 불러오는 중 오류 발생:', error);
-        }
-    }
-
     async function addRule(prefill){
       const node = tmpl.content.firstElementChild.cloneNode(true);
       if (prefill){
@@ -242,6 +448,9 @@
       
       // 파일 목록 로드
       await loadMdFileListForNewRule(node);
+      
+      // 검색 가능한 selectbox 초기화
+      initSearchableSelectForRule(node);
       
       node.addEventListener('click', async (e) => {
         const action = e.target.dataset.action;
@@ -275,15 +484,17 @@
                     throw new Error(`HTTP error! status: ${fileListResponse.status}`);
                 }
                 const files = await fileListResponse.json();
-                const file = files.find(f => f.path === selectedFile);
+                const file = files.find(f => f[currentFileKey] === selectedFile);
+
+                const file_url = fileKeySelector.value === 'path' ? file.path : file.raw_url;
                 
-                if (!file || !file.raw_url) {
+                if (!file || !file_url) {
                     alert('파일의 raw URL을 찾을 수 없습니다.');
                     return;
                 }
                 
                 // raw URL을 통해 파일 내용 가져오기
-                const response = await fetch(file.raw_url);
+                const response = await fetch(file_url);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -291,12 +502,17 @@
                 node.querySelector('.f-body').value = content;
                 
                 // 파일명에서 .md 확장자를 제거하고 .mdc로 변경
-                const mdcFilename = selectedFile.replace(/\.md$/, '.mdc');
-                node.querySelector('.f-name').value = mdcFilename;
+                const mdcFilename = file.path.replace(/\.md$/, '.mdc');
+                node.querySelector('.f-name').value = file[currentFileKey];
                 
                 // 설명도 자동으로 채우기 (파일명 기반)
                 const desc = mdcFilename.replace(/\.mdc$/, '').replace(/[-_]/g, ' ');
-                node.querySelector('.f-desc').value = desc.charAt(0).toUpperCase() + desc.slice(1) + ' (from ' + selectedFile + ')';
+                node.querySelector('.f-desc').value = desc.charAt(0).toUpperCase() + desc.slice(1) + ' (from ' + file.path + ')';
+                
+                // 선택된 파일 표시 업데이트
+                const selectDiv = node.querySelector('.searchable-select');
+                const selectedDiv = selectDiv.querySelector('.select-selected');
+                selectedDiv.innerHTML = file.path;
             } catch (error) {
                 console.error('파일 내용을 불러오는 중 오류 발생:', error);
                 alert('파일 내용을 불러오는 데 실패했습니다.');
@@ -316,23 +532,92 @@
             const files = await response.json();
             
             // 새로운 규칙 카드의 select 요소에 파일 목록 추가
-            const select = ruleNode.querySelector('select.f-name');
-            if (select) {
+            const selectDiv = ruleNode.querySelector('.searchable-select');
+            const selectElement = selectDiv.querySelector('select');
+            const selectedDiv = selectDiv.querySelector('.select-selected');
+            const itemsDiv = selectDiv.querySelector('.select-items');
+            
+            if (selectElement) {
                 // 기존 옵션 제거 (기본 옵션 제외)
-                while (select.options.length > 1) {
-                    select.remove(1);
+                while (selectElement.options.length > 1) {
+                    selectElement.remove(1);
                 }
-                // 새 파일 목록 추가 (path만 표시)
+                // 기존 항목 제거 (검색 입력 제외)
+                const searchInput = itemsDiv.querySelector('.select-search');
+                itemsDiv.innerHTML = '';
+                itemsDiv.appendChild(searchInput);
+                
+                // 새 파일 목록 추가
                 files.forEach(file => {
                     const option = document.createElement('option');
-                    option.value = file.path;
+                    option.value = file[currentFileKey];
                     option.textContent = file.path;
-                    select.appendChild(option);
+                    selectElement.appendChild(option);
+                    
+                    const item = document.createElement('DIV');
+                    item.innerHTML = file.path;
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        selectedDiv.innerHTML = file.path;
+                        selectElement.value = file[currentFileKey];
+                        closeAllSelect();
+                    });
+                    itemsDiv.appendChild(item);
                 });
+                
+                // 기본 선택값 설정
+                selectedDiv.innerHTML = "-- 파일을 선택하세요 --";
+                selectElement.value = "";
             }
         } catch (error) {
             console.error('파일 목록을 불러오는 중 오류 발생:', error);
         }
+    }
+    
+    // 새로운 규칙 카드에 대한 검색 가능한 selectbox 초기화
+    function initSearchableSelectForRule(ruleNode) {
+        const selectDiv = ruleNode.querySelector('.searchable-select');
+        if (!selectDiv) return;
+        
+        const selectedDiv = selectDiv.querySelector('.select-selected');
+        const itemsDiv = selectDiv.querySelector('.select-items');
+        const searchInput = itemsDiv.querySelector('.select-search');
+        const selectElement = selectDiv.querySelector('select');
+        
+        selectedDiv.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeAllSelect(this);
+            itemsDiv.classList.toggle('select-hide');
+            selectedDiv.classList.toggle('select-arrow-active');
+        });
+        
+        searchInput.addEventListener('input', (e) => {
+            const filter = e.target.value.toUpperCase();
+            const items = itemsDiv.querySelectorAll('div:not(.select-search)');
+            items.forEach(item => {
+                const txtValue = item.textContent || item.innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    item.style.display = "";
+                } else {
+                    item.style.display = "none";
+                }
+            });
+        });
+        
+        const options = selectElement.querySelectorAll('option');
+        options.forEach(option => {
+            if (option.value) {
+                const item = document.createElement('DIV');
+                item.innerHTML = option.innerHTML;
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectedDiv.innerHTML = option.innerHTML;
+                    selectElement.value = option.value;
+                    closeAllSelect();
+                });
+                itemsDiv.appendChild(item);
+            }
+        });
     }
 
     // Toolbar actions
