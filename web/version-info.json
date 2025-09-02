@@ -1,0 +1,7 @@
+{
+  "last_commit_id": "2c1e07c5a8c4a2d4b70205c2c66a0e852909bef7",
+  "last_commit_message": "fix(workflow): update commit logic for web directory changes\n\n- Enhanced the logic to check for changes in the entire `web/` directory instead of just `files.json`.\n- Updated echo statements for clarity when changes are detected or not.\n",
+  "branch": "main",
+  "committed_at": "2025-09-03T08:31:35+09:00",
+  "generated_at": "2025-09-02T23:32:10Z"
+}
