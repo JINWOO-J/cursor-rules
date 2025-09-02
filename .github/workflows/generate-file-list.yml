@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - '.cursorrules/**'
+      - 'cursor-rules/**'
   workflow_dispatch:
 
 jobs:
@@ -23,11 +23,11 @@ jobs:
           
           # 필요한 디렉터리 정의
           MD_DIRS=(
-            ".cursorrules"
-            ".cursorrules/common"
-            ".cursorrules/project"
-            ".cursorrules/generated"
-            ".cursorrules/common/stacks"
+            "cursor-rules"
+            "cursor-rules/common"
+            "cursor-rules/project"
+            "cursor-rules/generated"
+            "cursor-rules/common/stacks"
           )
           
           # web 디렉터리 확인 및 생성

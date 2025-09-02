@@ -1,6 +1,6 @@
 .PHONY: rules-merge rules-check dev-setup
 
-CURSOR_RULES_DIR := .cursorrules
+CURSOR_RULES_DIR := cursor-rules
 MERGED := $(CURSOR_RULES_DIR)/generated/_merged.md
 
 rules-merge:
