@@ -14,9 +14,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate file list
         run: |
+          echo "현재 디렉터리: $(pwd)"
+          echo "디렉터리 구조:"
+          ls -la
+          
           # 필요한 디렉터리 정의
           MD_DIRS=(
             ".cursorrules"
@@ -26,14 +32,25 @@ jobs:
             ".cursorrules/common/stacks"
           )
           
+          # web 디렉터리 확인 및 생성
+          if [ ! -d "web" ]; then
+            echo "web 디렉터리가 없습니다. 생성합니다."
+            mkdir -p web
+          fi
+          
           # JSON 배열 시작
           echo "[" > web/files.json
           
           FIRST=true
+          FILE_FOUND=false
           # 각 디렉터리에서 .md 파일 찾기
           for dir in "${MD_DIRS[@]}"; do
+            echo "디렉터리 확인: $dir"
             if [ -d "$dir" ]; then
-              find "$dir" -type f -name "*.md" | while read -r file; do
+              echo "디렉터리 존재: $dir"
+              while IFS= read -r -d '' file; do
+                echo "파일 찾음: $file"
+                FILE_FOUND=true
                 if [ "$FIRST" = true ]; then
                   FIRST=false
                 else
@@ -45,12 +62,19 @@ jobs:
                 # GITHUB_REPOSITORY와 GITHUB_REF_NAME 환경변수는 GitHub Actions에서 자동 제공
                 RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}/${file}"
                 echo "{\"path\":\"$file\",\"raw_url\":\"$RAW_URL\"}" >> web/files.json
-              done
+              done < <(find "$dir" -type f -name "*.md" -print0)
+            else
+              echo "디렉터리 없음: $dir"
             fi
           done
           
           # JSON 배열 끝
           echo "]" >> web/files.json
+          
+          # 파일이 없을 경우 빈 배열 유지
+          if [ "$FILE_FOUND" = false ]; then
+            echo "[]"> web/files.json
+          fi
           
           # 생성된 파일 내용 확인
           echo "Generated files.json:"
@@ -60,6 +84,17 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add web/files.json
-          git commit -m "Update files.json" || echo "No changes to commit"
-          git push
+          
+          # 변경 사항 확인
+          echo "git status:"
+          git status
+          
+          # files.json이 존재하는지 확인
+          if [ -f "web/files.json" ]; then
+            echo "web/files.json 파일이 존재합니다."
+            git add web/files.json
+            git commit -m "Update files.json" || echo "No changes to commit"
+            git push
+          else
+            echo "web/files.json 파일이 존재하지 않습니다."
+          fi
