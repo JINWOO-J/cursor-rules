@@ -12,12 +12,10 @@ jobs:
   generate-list:
     runs-on: ubuntu-latest
     permissions:
-      contents: write 
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          persist-credentials: true
 
       - name: Generate file list
         run: |
@@ -25,7 +23,6 @@ jobs:
           echo "디렉터리 구조:"
           ls -la
           
-          # 필요한 디렉터리 정의
           MD_DIRS=(
             ".cursorrules"
             ".cursorrules/common"
@@ -34,33 +31,28 @@ jobs:
             ".cursorrules/common/stacks"
           )
           
-          # web 디렉터리 확인 및 생성
-          if [ ! -d "web" ]; then
-            echo "web 디렉터리가 없습니다. 생성합니다."
-            mkdir -p web
-          fi
+          # Ensure 'web' directory exists
+          mkdir -p web
           
-          # JSON 배열 시작
+          # Initialize the JSON array file
           echo "[" > web/files.json
           
-          FIRST=true
-          FILE_FOUND=false
-          # 각 디렉터리에서 .md 파일 찾기
+          first_file=true
+          file_found=false
+          
+          # Loop through each directory to find .md files
           for dir in "${MD_DIRS[@]}"; do
-            echo "디렉터리 확인: $dir"
             if [ -d "$dir" ]; then
               echo "디렉터리 존재: $dir"
               while IFS= read -r -d '' file; do
                 echo "파일 찾음: $file"
-                FILE_FOUND=true
-                if [ "$FIRST" = true ]; true
-                else
+                file_found=true
+                
+                if [ "$first_file" = false ]; then
                   echo "," >> web/files.json
                 fi
+                first_file=false
                 
-                # 파일 정보 생성
-                # GitHub raw URL 형식: https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}
-                # GITHUB_REPOSITORY와 GITHUB_REF_NAME 환경변수는 GitHub Actions에서 자동 제공
                 RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}/${file}"
                 echo "{\"path\":\"$file\",\"raw_url\":\"$RAW_URL\"}" >> web/files.json
               done < <(find "$dir" -type f -name "*.md" -print0)
@@ -69,33 +61,17 @@ jobs:
             fi
           done
           
-          # JSON 배열 끝
           echo "]" >> web/files.json
           
-          # 파일이 없을 경우 빈 배열 유지
-          if [ "$FILE_FOUND" = false ]; then
-            echo "[]"> web/files.json
+          # If no files were found, ensure the file is an empty array
+          if [ "$file_found" = false ]; then
+            echo "[]" > web/files.json
           fi
           
-          # 생성된 파일 내용 확인
           echo "Generated files.json:"
           cat web/files.json
 
       - name: Commit and push changes
         run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          
-          # 변경 사항 확인
-          echo "git status:"
-          git status
-          
-          # files.json이 존재하는지 확인
-          if [ -f "web/files.json" ]; then
-            echo "web/files.json 파일이 존재합니다."
-            git add web/files.json
-            git commit -m "Update files.json"
-            git push
-          else
-            echo "web/files.json 파일이 존재하지 않습니다."
-          fi
+          # Check for changes before committing
+          git diff --quiet --exit-code web/files.json || git add web/files.json && git commit -m "Update files.json" && git push
