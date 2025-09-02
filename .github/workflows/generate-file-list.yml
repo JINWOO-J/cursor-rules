@@ -83,15 +83,16 @@ jobs:
 
       - name: Copy cursor-rules directory to web directory
         run: |        
-          echo "Copied cursor-rules directory to web directory"
+          echo "Starting to copy cursor-rules directory to web directory"
           
           # cursor-rules 디렉토리가 존재하는 경우에만 복사
           if [ -d "cursor-rules" ]; then
             # web/cursor-rules 디렉토리가 이미 존재하면 삭제
             if [ -d "web/cursor-rules" ]; then
+              echo "Removing existing cursor-rules directory"
               rm -rf web/cursor-rules
             fi
-            cp -r cursor-rules web/
+            cp -rv cursor-rules web/
             echo "Copied cursor-rules directory to web directory"
           else
             echo "cursor-rules directory not found, skipping copy"
