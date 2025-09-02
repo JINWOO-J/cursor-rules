@@ -124,16 +124,18 @@ jobs:
                     
       - name: Commit and push changes
         run: |
+          set -e
+
           # Git 사용자 정보 설정
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
-          # 파일 변경사항이 있는지 확인하고, 있으면 커밋 및 푸시
-          if ! git diff --quiet --exit-code web/files.json; then
-            echo "web/files.json 파일에 변경사항이 감지되었습니다."
-            git add web/files.json
-            git commit -m "docs(rules): auto update rules file list"
+          # web/ 디렉터리 내 변경사항 확인
+          if [ -n "$(git status --porcelain web/)" ]; then
+            echo "web/ 디렉터리에 변경사항이 감지되었습니다."
+            git add web/
+            git commit -m "docs(rules): auto update web assets (files.json, version-info.json, cursor-rules)"
             git push
           else
-            echo "web/files.json 파일에 변경사항이 없습니다. 커밋을 건너뜁니다."
+            echo "web/ 디렉터리에 변경사항이 없습니다. 커밋을 건너뜁니다."
           fi
