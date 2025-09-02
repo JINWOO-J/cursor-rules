@@ -12,7 +12,7 @@ jobs:
   generate-list:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write # 403 에러 해결: 워크플로우에 쓰기 권한을 부여합니다.
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -20,9 +20,8 @@ jobs:
       - name: Generate file list
         run: |
           echo "현재 디렉터리: $(pwd)"
-          echo "디렉터리 구조:"
-          ls -la
           
+          # 필요한 디렉터리 정의
           MD_DIRS=(
             ".cursorrules"
             ".cursorrules/common"
@@ -31,28 +30,31 @@ jobs:
             ".cursorrules/common/stacks"
           )
           
-          # Ensure 'web' directory exists
+          # web 디렉터리 확인 및 생성
           mkdir -p web
           
-          # Initialize the JSON array file
+          # JSON 배열 시작
           echo "[" > web/files.json
           
           first_file=true
           file_found=false
           
-          # Loop through each directory to find .md files
+          # 각 디렉터리에서 .md 파일 찾기
           for dir in "${MD_DIRS[@]}"; do
+            echo "디렉터리 확인: $dir"
             if [ -d "$dir" ]; then
               echo "디렉터리 존재: $dir"
               while IFS= read -r -d '' file; do
                 echo "파일 찾음: $file"
                 file_found=true
                 
+                # 첫 번째 파일이 아니면 콤마를 추가
                 if [ "$first_file" = false ]; then
                   echo "," >> web/files.json
                 fi
                 first_file=false
                 
+                # GitHub raw URL 형식: https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}
                 RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}/${file}"
                 echo "{\"path\":\"$file\",\"raw_url\":\"$RAW_URL\"}" >> web/files.json
               done < <(find "$dir" -type f -name "*.md" -print0)
@@ -61,9 +63,10 @@ jobs:
             fi
           done
           
+          # JSON 배열 끝
           echo "]" >> web/files.json
           
-          # If no files were found, ensure the file is an empty array
+          # 파일이 없을 경우 빈 배열 유지
           if [ "$file_found" = false ]; then
             echo "[]" > web/files.json
           fi
@@ -73,5 +76,16 @@ jobs:
 
       - name: Commit and push changes
         run: |
-          # Check for changes before committing
-          git diff --quiet --exit-code web/files.json || git add web/files.json && git commit -m "Update files.json" && git push
+          # Git 사용자 정보 설정
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          # 파일 변경사항이 있는지 확인하고, 있으면 커밋 및 푸시
+          if ! git diff --quiet --exit-code web/files.json; then
+            echo "web/files.json 파일에 변경사항이 감지되었습니다."
+            git add web/files.json
+            git commit -m "docs(rules): auto update rules file list"
+            git push
+          else
+            echo "web/files.json 파일에 변경사항이 없습니다. 커밋을 건너뜁니다."
+          fi
