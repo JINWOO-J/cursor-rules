@@ -48,8 +48,9 @@ jobs:
         run: |
           bash scripts/generate_web.sh
           echo '/*' > web/.nojekyll      # Jekyll 끄기(언더스코어 경로 문제 방지)
-          echo "--- files.json preview ---"
-          cat web/version.json
+          echo "--- version-info.json preview ---"
+          cat web/version-info.json
+          echo "--- files.json preview ---"          
           head -n 50 web/files.json || true
 
     #   - name: Commit & push web/ changes
