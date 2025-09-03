@@ -1,7 +1,7 @@
 {
-  "last_commit_id": "7097f34ed31aab1ad97af0b1b73b561b77871836",
-  "last_commit_message": "feat(web): add automatic file selection based on basePath\n\n- Implemented functionality to automatically set the file selection in the UI based on the provided basePath in the prefill object.\n- Enhanced the expandPresetToBases function to improve base path handling and filtering logic.\n- Added debug logging for better traceability during preset loading and selection processes.",
-  "branch": "undefined",
-  "committed_at": "2025-09-03T11:13:21+09:00",
-  "generated_at": "2025-09-03T02:16:17Z"
+  "last_commit_id": "864466817679c7d34927df519db567dee75118be",
+  "last_commit_message": "feat(workflow): update build workflow and cursor rules presets\n\n- Enhanced the GitHub Actions workflow to trigger on changes in additional directories including scripts, web, and workflows.\n- Updated cursor rules presets to version 2, adding new categories and presets for essential, backend, frontend, fullstack, and devops development.\n- Improved the web interface by adding a preset selector for loading development environment presets dynamically.\n- Added a .nojekyll file to prevent Jekyll processing on GitHub Pages.",
+  "branch": "main",
+  "committed_at": "2025-09-03T11:18:39+09:00",
+  "generated_at": "2025-09-03T02:19:31Z"
 }
