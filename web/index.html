@@ -11,7 +11,7 @@
     header { padding: 20px; border-bottom: 1px solid #21314f; background: #0e1628; position: sticky; top: 0; z-index: 5; }
     h1 { margin: 0 0 8px; font-size: 20px; }
     .sub { opacity: .85; font-size: 13px; }
-    main { padding: 20px; display: grid; gap: var(--gap); max-width: 1100px; margin: 0 auto; }
+    main { padding: 20px; display: grid; gap: var(--gap); max-width: 1300px; margin: 0 auto; }
     .row { display: flex; flex-wrap: wrap; gap: var(--gap); align-items: center; }
     .card { background: #101a30; border: 1px solid #22365c; border-radius: var(--radius); padding: 16px; }
     .toolbar .btn { margin-right: 8px; }
@@ -114,7 +114,7 @@
     <section class="card toolbar">
       <div class="row">
         <button class="btn" id="addRule">+ 규칙 추가</button>
-        <button class="btn" id="loadDefaults">보안 기본 + 프로젝트 템플릿 불러오기</button>
+        <!-- <button class="btn" id="loadDefaults">보안 기본 + 프로젝트 템플릿 불러오기</button> -->
         <div class="field preset-field">
           <label>🎯 개발 환경별 프리셋</label>
           <select id="presetSelector">
@@ -156,7 +156,7 @@
               <input type="text" class="select-search" placeholder="검색...">
             </div>
           </div>
-          <button type="button" class="btn" style="margin-top: 5px;" data-action="load-file-content">파일 내용 불러오기</button>
+          <div class="muted" style="margin-top: 5px; font-size: 12px;">파일 선택 시 자동으로 내용이 로딩됩니다</div>
         </div>
         <div class="field">
           <label>설명 (description)</label>
@@ -286,6 +286,39 @@
           closeAllSelect(selectedDiv);
           itemsDiv.classList.toggle('select-hide');
           selectedDiv.classList.toggle('select-arrow-active');
+          // select-box가 열릴 때 검색 필드에 포커스하고 검색어 초기화
+          if (!itemsDiv.classList.contains('select-hide')) {
+            setTimeout(() => {
+              searchInput.value = '';
+              searchInput.focus();
+              // 모든 항목 다시 표시
+              const items = itemsDiv.querySelectorAll('div:not(.select-search)');
+              items.forEach(item => item.style.display = "");
+            }, 100);
+          }
+        });
+        
+        // 검색 입력 필드 클릭 시 select-box가 닫히지 않도록 방지
+        searchInput.addEventListener('click', (e) => {
+          e.stopPropagation();
+        });
+        
+        // 검색 필드에서 키보드 이벤트 처리
+        searchInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            // 첫 번째 보이는 항목 선택
+            const visibleItems = Array.from(itemsDiv.querySelectorAll('div:not(.select-search)'))
+              .filter(item => item.style.display !== 'none');
+            if (visibleItems.length > 0) {
+              visibleItems[0].click();
+            }
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            closeAllSelect();
+          }
         });
         
         searchInput.addEventListener('input', (e) => {
@@ -383,6 +416,7 @@
           const selectElement = selectDiv.querySelector('select');
           const selectedDiv = selectDiv.querySelector('.select-selected');
           const itemsDiv = selectDiv.querySelector('.select-items');
+          const ruleCard = selectDiv.closest('.rule');
 
           while (selectElement.options.length > 1) selectElement.remove(1);
           const searchInput = itemsDiv.querySelector('.select-search');
@@ -397,11 +431,13 @@
 
             const item = document.createElement('DIV');
             item.innerHTML = b.base;
-            item.addEventListener('click', (e) => {
+            item.addEventListener('click', async (e) => {
               e.stopPropagation();
               selectedDiv.innerHTML = b.base;
               selectElement.value = b.base;
               closeAllSelect();
+              // 파일 선택 변경 시 자동으로 내용 로드
+              await loadFileContent(ruleCard);
             });
             itemsDiv.appendChild(item);
           });
@@ -534,82 +570,7 @@
         } else if (action === 'remove'){
           node.remove();
         } else if (action === 'load-file-content') {
-          const basePath = node.querySelector('.f-name').value; // 항상 cursor-rules/.../foo.md
-          if (!basePath) {
-            alert('파일을 먼저 선택하세요.');
-            return;
-          }
-          try {
-            const fileListResponse = await fetch(BASE_PATH + 'files.json');
-            if (!fileListResponse.ok) throw new Error(`HTTP error! status: ${fileListResponse.status}`);
-            const files = await fileListResponse.json();
-
-            // 베이스에서 KR/EN 후보 경로 만들기
-            const krPath = basePath.replace(/\.md$/i, '.kr.md');
-            const enPath = basePath.replace(/\.md$/i, '.en.md');
-
-            // files.json에서 엔트리 찾기 (없으면 fallback: plain/md를 lang 단서로)
-            const krEntry =
-              files.find(f => f.path === krPath) ||
-              files.find(f => f.path === basePath && (f.lang === 'kr' || f.lang === 'und'));
-
-            const enEntry =
-              files.find(f => f.path === enPath) ||
-              files.find(f => f.path === basePath && f.lang === 'en');
-
-            const urlFor = (entry) => {
-              if (!entry) return null;
-              if (fileKeySelector.value === 'path') {
-                let path = entry.path;
-                
-                // GitHub Pages 프로젝트 사이트에서 경로 보정
-                if (window.location.pathname.includes('/cursor-rules/')) {
-                  // "cursor-rules/xxx.md" -> "cursor-rules/cursor-rules/xxx.md"
-                  if (path.startsWith('cursor-rules/') && !path.startsWith('cursor-rules/cursor-rules/')) {
-                    path = 'cursor-rules/' + path;
-                  }
-                }
-                
-                return BASE_PATH + path;
-              }
-              // raw_url 모드일 때는 GitHub URL 그대로 사용
-              return entry.raw_url;
-            };
-
-            // 병렬 로드
-            const [krContent, enContent] = await Promise.all([
-              (async () => {
-                const u = urlFor(krEntry);
-                if (!u) return '';
-                const r = await fetch(u);
-                if (!r.ok) throw new Error(`HTTP error (KR)! status: ${r.status}`);
-                return await r.text();
-              })(),
-              (async () => {
-                const u = urlFor(enEntry);
-                if (!u) return '';
-                const r = await fetch(u);
-                if (!r.ok) throw new Error(`HTTP error (EN)! status: ${r.status}`);
-                return await r.text();
-              })(),
-            ]);
-
-            // 좌/우 채우기 (있을 때만 갱신)
-            if (krContent) node.querySelector('.f-body-kr').value = krContent;
-            if (enContent) node.querySelector('.f-body-en').value = enContent;
-
-            // 설명/표시 업데이트
-            const mdcFilename = basePath.split('/').pop().replace(/\.md$/i, '.mdc');
-            const descBase = mdcFilename.replace(/\.mdc$/,'').replace(/[-_]/g,' ');
-            node.querySelector('.f-desc').value =
-              descBase.charAt(0).toUpperCase() + descBase.slice(1) + ` (from ${basePath})`;
-
-            const selectDiv = node.querySelector('.searchable-select');
-            selectDiv.querySelector('.select-selected').innerHTML = basePath;
-          } catch (error) {
-            console.error('파일 내용을 불러오는 중 오류 발생:', error);
-            alert('파일 내용을 불러오는 데 실패했습니다.');
-          }
+          await loadFileContent(node);
         }
 
      
@@ -621,6 +582,89 @@
       if (!v) return 'rule.mdc';
       const base = v.split('/').pop(); // path or raw_url 모두 마지막 토큰 사용
       return base.replace(/\.md$/i, '.mdc') || 'rule.mdc';
+    }
+
+    // 파일 내용 로딩 함수 (별도 분리)
+    async function loadFileContent(ruleCard) {
+      const basePath = ruleCard.querySelector('.f-name').value; // 항상 cursor-rules/.../foo.md
+      if (!basePath) {
+        console.log('파일이 선택되지 않았습니다.');
+        return;
+      }
+      
+      try {
+        const fileListResponse = await fetch(BASE_PATH + 'files.json');
+        if (!fileListResponse.ok) throw new Error(`HTTP error! status: ${fileListResponse.status}`);
+        const files = await fileListResponse.json();
+
+        // 베이스에서 KR/EN 후보 경로 만들기
+        const krPath = basePath.replace(/\.md$/i, '.kr.md');
+        const enPath = basePath.replace(/\.md$/i, '.en.md');
+
+        // files.json에서 엔트리 찾기 (없으면 fallback: plain/md를 lang 단서로)
+        const krEntry =
+          files.find(f => f.path === krPath) ||
+          files.find(f => f.path === basePath && (f.lang === 'kr' || f.lang === 'und'));
+
+        const enEntry =
+          files.find(f => f.path === enPath) ||
+          files.find(f => f.path === basePath && f.lang === 'en');
+
+        const urlFor = (entry) => {
+          if (!entry) return null;
+          if (fileKeySelector.value === 'path') {
+            let path = entry.path;
+            
+            // GitHub Pages 프로젝트 사이트에서 경로 보정
+            if (window.location.pathname.includes('/cursor-rules/')) {
+              // "cursor-rules/xxx.md" -> "cursor-rules/cursor-rules/xxx.md"
+              if (path.startsWith('cursor-rules/') && !path.startsWith('cursor-rules/cursor-rules/')) {
+                path = 'cursor-rules/' + path;
+              }
+            }
+            
+            return BASE_PATH + path;
+          }
+          // raw_url 모드일 때는 GitHub URL 그대로 사용
+          return entry.raw_url;
+        };
+
+        // 병렬 로드
+        const [krContent, enContent] = await Promise.all([
+          (async () => {
+            const u = urlFor(krEntry);
+            if (!u) return '';
+            const r = await fetch(u);
+            if (!r.ok) throw new Error(`HTTP error (KR)! status: ${r.status}`);
+            return await r.text();
+          })(),
+          (async () => {
+            const u = urlFor(enEntry);
+            if (!u) return '';
+            const r = await fetch(u);
+            if (!r.ok) throw new Error(`HTTP error (EN)! status: ${r.status}`);
+            return await r.text();
+          })(),
+        ]);
+
+        // 좌/우 채우기 (있을 때만 갱신)
+        if (krContent) ruleCard.querySelector('.f-body-kr').value = krContent;
+        if (enContent) ruleCard.querySelector('.f-body-en').value = enContent;
+
+        // 설명/표시 업데이트
+        const mdcFilename = basePath.split('/').pop().replace(/\.md$/i, '.mdc');
+        const descBase = mdcFilename.replace(/\.mdc$/,'').replace(/[-_]/g,' ');
+        ruleCard.querySelector('.f-desc').value =
+          descBase.charAt(0).toUpperCase() + descBase.slice(1) + ` (from ${basePath})`;
+
+        const selectDiv = ruleCard.querySelector('.searchable-select');
+        selectDiv.querySelector('.select-selected').innerHTML = basePath;
+        
+        console.log(`파일 내용 로딩 완료: ${basePath}`);
+      } catch (error) {
+        console.error('파일 내용을 불러오는 중 오류 발생:', error);
+        // 자동 로딩에서는 alert 대신 console.error만 사용
+      }
     }
 
 
@@ -653,11 +697,16 @@
 
           const item = document.createElement('DIV');
           item.innerHTML = b.base;
-          item.addEventListener('click', (e) => {
+          item.addEventListener('click', async (e) => {
             e.stopPropagation();
             selectedDiv.innerHTML = b.base;
             selectElement.value = b.base;
             closeAllSelect();
+            // 파일 선택 변경 시 자동으로 내용 로드
+            const ruleCard = selectDiv.closest('.rule');
+            if (ruleCard) {
+              await loadFileContent(ruleCard);
+            }
           });
           itemsDiv.appendChild(item);
         });
@@ -685,6 +734,39 @@
             closeAllSelect(selectedDiv);
             itemsDiv.classList.toggle('select-hide');
             selectedDiv.classList.toggle('select-arrow-active');
+            // select-box가 열릴 때 검색 필드에 포커스하고 검색어 초기화
+            if (!itemsDiv.classList.contains('select-hide')) {
+                setTimeout(() => {
+                    searchInput.value = '';
+                    searchInput.focus();
+                    // 모든 항목 다시 표시
+                    const items = itemsDiv.querySelectorAll('div:not(.select-search)');
+                    items.forEach(item => item.style.display = "");
+                }, 100);
+            }
+        });
+        
+        // 검색 입력 필드 클릭 시 select-box가 닫히지 않도록 방지
+        searchInput.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+        
+        // 검색 필드에서 키보드 이벤트 처리
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                // 첫 번째 보이는 항목 선택
+                const visibleItems = Array.from(itemsDiv.querySelectorAll('div:not(.select-search)'))
+                    .filter(item => item.style.display !== 'none');
+                if (visibleItems.length > 0) {
+                    visibleItems[0].click();
+                }
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                closeAllSelect();
+            }
         });
         
         searchInput.addEventListener('input', (e) => {
@@ -705,43 +787,19 @@
             if (option.value) {
                 const item = document.createElement('DIV');
                 item.innerHTML = option.innerHTML;
-                item.addEventListener('click', (e) => {
+                item.addEventListener('click', async (e) => {
                     e.stopPropagation();
                     selectedDiv.innerHTML = option.innerHTML;
                     selectElement.value = option.value;
                     closeAllSelect();
+                    // 파일 선택 변경 시 자동으로 내용 로드
+                    await loadFileContent(ruleNode);
                 });
                 itemsDiv.appendChild(item);
             }
         });
     }
 
-    // async function fetchPresets(url = 'cursor-rules/presets.json') {
-    //   const res = await fetch(url);
-    //   if (!res.ok) throw new Error(`Failed to load presets: ${res.status}`);
-    //   const json = await res.json();
-    //   if (!Array.isArray(json.presets)) throw new Error('Invalid presets schema');
-    //   return json.presets;
-    // }
-
-
-    // async function loadDynamicPresetsFromFiles() {
-    //   const res = await fetch('files.json');
-    //   if (!res.ok) throw new Error('files.json load failed');
-    //   const files = await res.json();
-    //   const bases = buildBaseIndex(files); // 이미 구현됨
-
-    //   // UI: 선택 모달 없이 바로 카드 생성 예시
-    //   $rules.innerHTML = '';
-    //   for (const b of bases) {
-    //     await addRule({
-    //       desc: (b.base.split('/').pop().replace(/\.md$/,'')).replace(/[-_]/g,' ').replace(/^\w/, c => c.toUpperCase()),
-    //       scope: 'Auto',
-    //       globs: '**/*',
-    //       bodyKr: '', bodyEn: '' // 버튼으로 ‘파일 내용 불러오기’ 누르면 채워짐
-    //     });
-    //   }
-    // }
     function normBase(p) {
       if (!p) return '';
       let s = String(p).trim();
@@ -1107,98 +1165,42 @@
     };
 
 
-    document.getElementById('loadDefaults').onclick = () => {
-      $rules.innerHTML = '';
-      // 00: Security baseline (Always)
-      addRule({
-        name: '00-security.mdc',
-        desc: 'Organization Security & Secrets Baseline',
-        scope: 'Always',
-        globs: '**/*',
-        body: `# Security & Secrets\n\n- 시크릿/토큰/자격증명/PII는 출력·복사·하드코딩 금지.\n- 의심 문자열(AccessKey, PrivateKey, JWT 등) 감지 시 즉시 중단·마스킹.\n- 안전한 대체: 환경변수/시크릿 매니저 사용 가이드 제시.\n- 외부 전송/학습 추정 작업은 보류하고 내부 대체 절차 제안.\n- 커밋/PR 시 비공개 정보가 포함되지 않도록 점검 체크리스트 제공.`
-      });
-      // 10: Git style (Auto)
-      addRule({
-        name: '10-git-style.mdc',
-        desc: 'Git commit/pr style (sentence-style)',
-        scope: 'Auto',
-        globs: '**/*',
-        body: `# Git & Commit Style\n\n- 커밋 메시지는 문장형·간결체(Conventional 미사용).\n  - 예: 'Fix PS1 prompt escaping for zsh.'\n- PR 본문 3줄 규약: 변경 요약 / 영향 범위 / 롤백 방법.\n- 대규모 변경 시 마이그레이션 단계와 리스크 요약.`
-      });
-      // 20: Stack example (Auto)
-      addRule({
-        name: '20-node-react.mdc',
-        desc: 'Node 22 + React/Vite defaults',
-        scope: 'Auto',
-        globs: '**/*',
-        body: `# Node/React/Vite Defaults\n\n- Node 22, ESLint + typescript-eslint 사용.\n- Route-level dynamic import, 폰트/아이콘은 WOFF2 우선.\n- 번들 전/후 비교표와 선택 기준 3줄 요약.`
-      });
-      // 90: Project overrides (Auto)
-      addRule({
-        name: '90-project-overrides.mdc',
-        desc: 'This repository specific rules (overrides/additions)',
-        scope: 'Auto',
-        globs: '**/*',
-        body: `# Project Overrides\n\n- 이 리포지토리의 폴더 구조·환경변수 키·엔드포인트 등 구체화를 여기에 기록.\n- 공통 규칙을 약화시키는 내용은 금지(보안 섹션 override deny).`
-      });
-    };
-
-    // 프리셋 불러오기
-    // document.getElementById('loadPresets').onclick = () => {
+    // document.getElementById('loadDefaults').onclick = () => {
     //   $rules.innerHTML = '';
-    //   // Python FastAPI
+    //   // 00: Security baseline (Always)
     //   addRule({
-    //     name: 'python-fastapi.mdc',
-    //     desc: 'Python 3.13 + FastAPI defaults',
-    //     scope: 'Auto',
+    //     name: '00-security.mdc',
+    //     desc: 'Organization Security & Secrets Baseline',
+    //     scope: 'Always',
     //     globs: '**/*',
-    //     body: `# Python/FastAPI Defaults\n\n- Python 3.13, 타입힌트 필수, mypy --strict 통과 기준.\n- FastAPI 스캐폴딩 시 pydantic v2 기준.\n- 동기/비동기 혼용 금지, 라우터/스키마/서비스 레이어 모듈 분리.`
+    //     body: `# Security & Secrets\n\n- 시크릿/토큰/자격증명/PII는 출력·복사·하드코딩 금지.\n- 의심 문자열(AccessKey, PrivateKey, JWT 등) 감지 시 즉시 중단·마스킹.\n- 안전한 대체: 환경변수/시크릿 매니저 사용 가이드 제시.\n- 외부 전송/학습 추정 작업은 보류하고 내부 대체 절차 제안.\n- 커밋/PR 시 비공개 정보가 포함되지 않도록 점검 체크리스트 제공.`
     //   });
-    //   // Docker DevOps
+    //   // 10: Git style (Auto)
     //   addRule({
-    //     name: 'docker-devops.mdc',
-    //     desc: 'Dockerfile & DevOps defaults',
+    //     name: '10-git-style.mdc',
+    //     desc: 'Git commit/pr style (sentence-style)',
     //     scope: 'Auto',
     //     globs: '**/*',
-    //     body: `# Docker/DevOps Defaults\n\n- Dockerfile은 멀티스테이지 + alpine 기본.\n- Buildx, 캐시 전략(브랜치 스코프) 반영.\n- docker-compose는 .env.local 전제로 설계. .env 하드 의존 금지.\n- 이미지 최적화(패키지 제거, 압축) 및 --platform 표기 유지.`
+    //     body: `# Git & Commit Style\n\n- 커밋 메시지는 문장형·간결체(Conventional 미사용).\n  - 예: 'Fix PS1 prompt escaping for zsh.'\n- PR 본문 3줄 규약: 변경 요약 / 영향 범위 / 롤백 방법.\n- 대규모 변경 시 마이그레이션 단계와 리스크 요약.`
     //   });
-    //   // DB Prisma
+    //   // 20: Stack example (Auto)
     //   addRule({
-    //     name: 'db-prisma.mdc',
-    //     desc: 'Prisma ORM defaults',
+    //     name: '20-node-react.mdc',
+    //     desc: 'Node 22 + React/Vite defaults',
     //     scope: 'Auto',
     //     globs: '**/*',
-    //     body: `# Prisma Defaults\n\n- 컴포지트 키/관계 명명 규칙 준수.\n- 마이그레이션은 리뷰 후 적용.\n- 다운 마이그레이션 경로 필수.`
+    //     body: `# Node/React/Vite Defaults\n\n- Node 22, ESLint + typescript-eslint 사용.\n- Route-level dynamic import, 폰트/아이콘은 WOFF2 우선.\n- 번들 전/후 비교표와 선택 기준 3줄 요약.`
     //   });
-    //   // UI Tailwind
+    //   // 90: Project overrides (Auto)
     //   addRule({
-    //     name: 'ui-tailwind.mdc',
-    //     desc: 'Tailwind CSS defaults',
+    //     name: '90-project-overrides.mdc',
+    //     desc: 'This repository specific rules (overrides/additions)',
     //     scope: 'Auto',
     //     globs: '**/*',
-    //     body: `# Tailwind CSS Defaults\n\n- 사내 iris 팔레트 토큰 우선 사용.\n- 새 색상 제안 금지, 필요 시 토큰 맵핑 테이블 포함.\n- 반응형 디자인과 접근성 고려.`
+    //     body: `# Project Overrides\n\n- 이 리포지토리의 폴더 구조·환경변수 키·엔드포인트 등 구체화를 여기에 기록.\n- 공통 규칙을 약화시키는 내용은 금지(보안 섹션 override deny).`
     //   });
     // };
-
-    // document.getElementById('loadPresets').onclick = async () => {
-    //   try {
-    //     const presets = await fetchPresets(); // 기본 로컬 JSON
-    //     $rules.innerHTML = '';
-    //     for (const p of presets) {
-    //       await addRule({
-    //         desc: p.desc, scope: p.scope, globs: p.globs,
-    //         bodyKr: p.bodyKr || '', bodyEn: p.bodyEn || ''
-    //       });
-    //     }
-    //   } catch (e) {
-    //     console.error(e);
-    //     alert('프리셋을 불러오지 못했습니다.');
-    //   }
-    // };
-
-
-    // Start empty
-    // addRule({ scope: 'Auto', globs: '**/*' });
+    
   </script>
 </body>
 </html>

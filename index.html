@@ -11,7 +11,7 @@
     header { padding: 20px; border-bottom: 1px solid #21314f; background: #0e1628; position: sticky; top: 0; z-index: 5; }
     h1 { margin: 0 0 8px; font-size: 20px; }
     .sub { opacity: .85; font-size: 13px; }
-    main { padding: 20px; display: grid; gap: var(--gap); max-width: 1100px; margin: 0 auto; }
+    main { padding: 20px; display: grid; gap: var(--gap); max-width: 1300px; margin: 0 auto; }
     .row { display: flex; flex-wrap: wrap; gap: var(--gap); align-items: center; }
     .card { background: #101a30; border: 1px solid #22365c; border-radius: var(--radius); padding: 16px; }
     .toolbar .btn { margin-right: 8px; }
@@ -156,7 +156,7 @@
               <input type="text" class="select-search" placeholder="검색...">
             </div>
           </div>
-          <button type="button" class="btn" style="margin-top: 5px;" data-action="load-file-content">파일 내용 불러오기</button>
+          <div class="muted" style="margin-top: 5px; font-size: 12px;">파일 선택 시 자동으로 내용이 로딩됩니다</div>
         </div>
         <div class="field">
           <label>설명 (description)</label>
@@ -286,6 +286,39 @@
           closeAllSelect(selectedDiv);
           itemsDiv.classList.toggle('select-hide');
           selectedDiv.classList.toggle('select-arrow-active');
+          // select-box가 열릴 때 검색 필드에 포커스하고 검색어 초기화
+          if (!itemsDiv.classList.contains('select-hide')) {
+            setTimeout(() => {
+              searchInput.value = '';
+              searchInput.focus();
+              // 모든 항목 다시 표시
+              const items = itemsDiv.querySelectorAll('div:not(.select-search)');
+              items.forEach(item => item.style.display = "");
+            }, 100);
+          }
+        });
+        
+        // 검색 입력 필드 클릭 시 select-box가 닫히지 않도록 방지
+        searchInput.addEventListener('click', (e) => {
+          e.stopPropagation();
+        });
+        
+        // 검색 필드에서 키보드 이벤트 처리
+        searchInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            // 첫 번째 보이는 항목 선택
+            const visibleItems = Array.from(itemsDiv.querySelectorAll('div:not(.select-search)'))
+              .filter(item => item.style.display !== 'none');
+            if (visibleItems.length > 0) {
+              visibleItems[0].click();
+            }
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            closeAllSelect();
+          }
         });
         
         searchInput.addEventListener('input', (e) => {
@@ -383,6 +416,7 @@
           const selectElement = selectDiv.querySelector('select');
           const selectedDiv = selectDiv.querySelector('.select-selected');
           const itemsDiv = selectDiv.querySelector('.select-items');
+          const ruleCard = selectDiv.closest('.rule');
 
           while (selectElement.options.length > 1) selectElement.remove(1);
           const searchInput = itemsDiv.querySelector('.select-search');
@@ -397,11 +431,13 @@
 
             const item = document.createElement('DIV');
             item.innerHTML = b.base;
-            item.addEventListener('click', (e) => {
+            item.addEventListener('click', async (e) => {
               e.stopPropagation();
               selectedDiv.innerHTML = b.base;
               selectElement.value = b.base;
               closeAllSelect();
+              // 파일 선택 변경 시 자동으로 내용 로드
+              await loadFileContent(ruleCard);
             });
             itemsDiv.appendChild(item);
           });
@@ -534,82 +570,7 @@
         } else if (action === 'remove'){
           node.remove();
         } else if (action === 'load-file-content') {
-          const basePath = node.querySelector('.f-name').value; // 항상 cursor-rules/.../foo.md
-          if (!basePath) {
-            alert('파일을 먼저 선택하세요.');
-            return;
-          }
-          try {
-            const fileListResponse = await fetch(BASE_PATH + 'files.json');
-            if (!fileListResponse.ok) throw new Error(`HTTP error! status: ${fileListResponse.status}`);
-            const files = await fileListResponse.json();
-
-            // 베이스에서 KR/EN 후보 경로 만들기
-            const krPath = basePath.replace(/\.md$/i, '.kr.md');
-            const enPath = basePath.replace(/\.md$/i, '.en.md');
-
-            // files.json에서 엔트리 찾기 (없으면 fallback: plain/md를 lang 단서로)
-            const krEntry =
-              files.find(f => f.path === krPath) ||
-              files.find(f => f.path === basePath && (f.lang === 'kr' || f.lang === 'und'));
-
-            const enEntry =
-              files.find(f => f.path === enPath) ||
-              files.find(f => f.path === basePath && f.lang === 'en');
-
-            const urlFor = (entry) => {
-              if (!entry) return null;
-              if (fileKeySelector.value === 'path') {
-                let path = entry.path;
-                
-                // GitHub Pages 프로젝트 사이트에서 경로 보정
-                if (window.location.pathname.includes('/cursor-rules/')) {
-                  // "cursor-rules/xxx.md" -> "cursor-rules/cursor-rules/xxx.md"
-                  if (path.startsWith('cursor-rules/') && !path.startsWith('cursor-rules/cursor-rules/')) {
-                    path = 'cursor-rules/' + path;
-                  }
-                }
-                
-                return BASE_PATH + path;
-              }
-              // raw_url 모드일 때는 GitHub URL 그대로 사용
-              return entry.raw_url;
-            };
-
-            // 병렬 로드
-            const [krContent, enContent] = await Promise.all([
-              (async () => {
-                const u = urlFor(krEntry);
-                if (!u) return '';
-                const r = await fetch(u);
-                if (!r.ok) throw new Error(`HTTP error (KR)! status: ${r.status}`);
-                return await r.text();
-              })(),
-              (async () => {
-                const u = urlFor(enEntry);
-                if (!u) return '';
-                const r = await fetch(u);
-                if (!r.ok) throw new Error(`HTTP error (EN)! status: ${r.status}`);
-                return await r.text();
-              })(),
-            ]);
-
-            // 좌/우 채우기 (있을 때만 갱신)
-            if (krContent) node.querySelector('.f-body-kr').value = krContent;
-            if (enContent) node.querySelector('.f-body-en').value = enContent;
-
-            // 설명/표시 업데이트
-            const mdcFilename = basePath.split('/').pop().replace(/\.md$/i, '.mdc');
-            const descBase = mdcFilename.replace(/\.mdc$/,'').replace(/[-_]/g,' ');
-            node.querySelector('.f-desc').value =
-              descBase.charAt(0).toUpperCase() + descBase.slice(1) + ` (from ${basePath})`;
-
-            const selectDiv = node.querySelector('.searchable-select');
-            selectDiv.querySelector('.select-selected').innerHTML = basePath;
-          } catch (error) {
-            console.error('파일 내용을 불러오는 중 오류 발생:', error);
-            alert('파일 내용을 불러오는 데 실패했습니다.');
-          }
+          await loadFileContent(node);
         }
 
      
@@ -621,6 +582,89 @@
       if (!v) return 'rule.mdc';
       const base = v.split('/').pop(); // path or raw_url 모두 마지막 토큰 사용
       return base.replace(/\.md$/i, '.mdc') || 'rule.mdc';
+    }
+
+    // 파일 내용 로딩 함수 (별도 분리)
+    async function loadFileContent(ruleCard) {
+      const basePath = ruleCard.querySelector('.f-name').value; // 항상 cursor-rules/.../foo.md
+      if (!basePath) {
+        console.log('파일이 선택되지 않았습니다.');
+        return;
+      }
+      
+      try {
+        const fileListResponse = await fetch(BASE_PATH + 'files.json');
+        if (!fileListResponse.ok) throw new Error(`HTTP error! status: ${fileListResponse.status}`);
+        const files = await fileListResponse.json();
+
+        // 베이스에서 KR/EN 후보 경로 만들기
+        const krPath = basePath.replace(/\.md$/i, '.kr.md');
+        const enPath = basePath.replace(/\.md$/i, '.en.md');
+
+        // files.json에서 엔트리 찾기 (없으면 fallback: plain/md를 lang 단서로)
+        const krEntry =
+          files.find(f => f.path === krPath) ||
+          files.find(f => f.path === basePath && (f.lang === 'kr' || f.lang === 'und'));
+
+        const enEntry =
+          files.find(f => f.path === enPath) ||
+          files.find(f => f.path === basePath && f.lang === 'en');
+
+        const urlFor = (entry) => {
+          if (!entry) return null;
+          if (fileKeySelector.value === 'path') {
+            let path = entry.path;
+            
+            // GitHub Pages 프로젝트 사이트에서 경로 보정
+            if (window.location.pathname.includes('/cursor-rules/')) {
+              // "cursor-rules/xxx.md" -> "cursor-rules/cursor-rules/xxx.md"
+              if (path.startsWith('cursor-rules/') && !path.startsWith('cursor-rules/cursor-rules/')) {
+                path = 'cursor-rules/' + path;
+              }
+            }
+            
+            return BASE_PATH + path;
+          }
+          // raw_url 모드일 때는 GitHub URL 그대로 사용
+          return entry.raw_url;
+        };
+
+        // 병렬 로드
+        const [krContent, enContent] = await Promise.all([
+          (async () => {
+            const u = urlFor(krEntry);
+            if (!u) return '';
+            const r = await fetch(u);
+            if (!r.ok) throw new Error(`HTTP error (KR)! status: ${r.status}`);
+            return await r.text();
+          })(),
+          (async () => {
+            const u = urlFor(enEntry);
+            if (!u) return '';
+            const r = await fetch(u);
+            if (!r.ok) throw new Error(`HTTP error (EN)! status: ${r.status}`);
+            return await r.text();
+          })(),
+        ]);
+
+        // 좌/우 채우기 (있을 때만 갱신)
+        if (krContent) ruleCard.querySelector('.f-body-kr').value = krContent;
+        if (enContent) ruleCard.querySelector('.f-body-en').value = enContent;
+
+        // 설명/표시 업데이트
+        const mdcFilename = basePath.split('/').pop().replace(/\.md$/i, '.mdc');
+        const descBase = mdcFilename.replace(/\.mdc$/,'').replace(/[-_]/g,' ');
+        ruleCard.querySelector('.f-desc').value =
+          descBase.charAt(0).toUpperCase() + descBase.slice(1) + ` (from ${basePath})`;
+
+        const selectDiv = ruleCard.querySelector('.searchable-select');
+        selectDiv.querySelector('.select-selected').innerHTML = basePath;
+        
+        console.log(`파일 내용 로딩 완료: ${basePath}`);
+      } catch (error) {
+        console.error('파일 내용을 불러오는 중 오류 발생:', error);
+        // 자동 로딩에서는 alert 대신 console.error만 사용
+      }
     }
 
 
@@ -653,11 +697,16 @@
 
           const item = document.createElement('DIV');
           item.innerHTML = b.base;
-          item.addEventListener('click', (e) => {
+          item.addEventListener('click', async (e) => {
             e.stopPropagation();
             selectedDiv.innerHTML = b.base;
             selectElement.value = b.base;
             closeAllSelect();
+            // 파일 선택 변경 시 자동으로 내용 로드
+            const ruleCard = selectDiv.closest('.rule');
+            if (ruleCard) {
+              await loadFileContent(ruleCard);
+            }
           });
           itemsDiv.appendChild(item);
         });
@@ -685,6 +734,39 @@
             closeAllSelect(selectedDiv);
             itemsDiv.classList.toggle('select-hide');
             selectedDiv.classList.toggle('select-arrow-active');
+            // select-box가 열릴 때 검색 필드에 포커스하고 검색어 초기화
+            if (!itemsDiv.classList.contains('select-hide')) {
+                setTimeout(() => {
+                    searchInput.value = '';
+                    searchInput.focus();
+                    // 모든 항목 다시 표시
+                    const items = itemsDiv.querySelectorAll('div:not(.select-search)');
+                    items.forEach(item => item.style.display = "");
+                }, 100);
+            }
+        });
+        
+        // 검색 입력 필드 클릭 시 select-box가 닫히지 않도록 방지
+        searchInput.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+        
+        // 검색 필드에서 키보드 이벤트 처리
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                // 첫 번째 보이는 항목 선택
+                const visibleItems = Array.from(itemsDiv.querySelectorAll('div:not(.select-search)'))
+                    .filter(item => item.style.display !== 'none');
+                if (visibleItems.length > 0) {
+                    visibleItems[0].click();
+                }
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                closeAllSelect();
+            }
         });
         
         searchInput.addEventListener('input', (e) => {
@@ -705,11 +787,13 @@
             if (option.value) {
                 const item = document.createElement('DIV');
                 item.innerHTML = option.innerHTML;
-                item.addEventListener('click', (e) => {
+                item.addEventListener('click', async (e) => {
                     e.stopPropagation();
                     selectedDiv.innerHTML = option.innerHTML;
                     selectElement.value = option.value;
                     closeAllSelect();
+                    // 파일 선택 변경 시 자동으로 내용 로드
+                    await loadFileContent(ruleNode);
                 });
                 itemsDiv.appendChild(item);
             }

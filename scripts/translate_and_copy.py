@@ -62,7 +62,13 @@ def split_front_matter(md: str):
     return fm, body
 
 def build_front_matter(fm: dict) -> str:
-    return "---\n" + yaml.safe_dump(fm, sort_keys=False, allow_unicode=True) + "---\n"
+    yaml_content = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True)
+    # yaml.safe_dump는 None이나 bytes를 반환할 수 있으므로 안전하게 처리
+    if yaml_content is None:
+        yaml_content = ""
+    elif isinstance(yaml_content, bytes):
+        yaml_content = yaml_content.decode('utf-8')
+    return "---\n" + yaml_content + "---\n"
 
 def load_glossary() -> dict:
     if GLOSSARY_PATH.exists():
@@ -145,18 +151,21 @@ def out_path_for(src: Path, lang_suffix: str | None, rename_plain_to_kr: bool) -
     """
     src: absolute path under one of SRC_ROOTS
     lang_suffix: None keeps suffix; "en" forces .en.md; "" with rename_plain_to_kr=True rewrites *.md → *.kr.md
+    
+    디렉토리 구조를 보존하여 매핑:
+    cursor-rules/common/stacks/foo.md → web/cursor-rules/common/stacks/foo.kr.md
+    cursor-rules/common/bar.md → web/cursor-rules/common/bar.kr.md
+    cursor-rules/project/baz.md → web/cursor-rules/project/baz.kr.md
     """
-    # find relative path beneath its SRC_ROOT
-    rel = None
-    for base in SRC_ROOTS:
-        try:
-            rel = src.relative_to(base)
-            break
-        except ValueError:
-            continue
-    if rel is None:
-        # fallback to path under first root
-        rel = src.relative_to(SRC_ROOTS[0])
+    # cursor-rules/ 루트를 기준으로 상대 경로 계산
+    cursor_rules_root = ROOT / "cursor-rules"
+    
+    try:
+        # cursor-rules/ 루트 기준 상대 경로
+        rel = src.relative_to(cursor_rules_root)
+    except ValueError:
+        # cursor-rules/ 외부 파일인 경우 fallback (일반적으로 발생하지 않음)
+        rel = Path(src.name)
 
     # *.md(plain) → *.kr.md 로 바꾸는 경우
     name = rel.name
@@ -230,13 +239,21 @@ def main():
     if OUT_ROOT.exists():
         shutil.rmtree(OUT_ROOT)
 
-    for base in SRC_ROOTS:
-        if not base.exists():
-            continue
-        for path in base.rglob("*.md"):
+    # cursor-rules/ 루트에서 모든 *.md 파일을 한 번만 처리
+    cursor_rules_root = ROOT / "cursor-rules"
+    processed_files = set()
+    
+    if cursor_rules_root.exists():
+        for path in cursor_rules_root.rglob("*.md"):
             # 소스 트리 안의 *.md만 처리 (산출물 트리 제외)
             if "web/cursor-rules" in str(path):
                 continue
+            
+            # 중복 처리 방지
+            if path.resolve() in processed_files:
+                continue
+            processed_files.add(path.resolve())
+            
             process_file(path)
 
 if __name__ == "__main__":
