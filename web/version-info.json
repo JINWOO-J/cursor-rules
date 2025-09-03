@@ -1,7 +1,7 @@
 {
-  "last_commit_id": "864466817679c7d34927df519db567dee75118be",
-  "last_commit_message": "feat(workflow): update build workflow and cursor rules presets\n\n- Enhanced the GitHub Actions workflow to trigger on changes in additional directories including scripts, web, and workflows.\n- Updated cursor rules presets to version 2, adding new categories and presets for essential, backend, frontend, fullstack, and devops development.\n- Improved the web interface by adding a preset selector for loading development environment presets dynamically.\n- Added a .nojekyll file to prevent Jekyll processing on GitHub Pages.",
+  "last_commit_id": "eabc85058ade7d9b347bf80b0e3718842421d31d",
+  "last_commit_message": "feat(web): refactor preset loading functionality\n\n- Replaced the inline click handler for loading presets with a dedicated function `loadPresetFromSelector` for better readability and maintainability.\n- Added an event listener to automatically load presets when the selection changes in the preset selector.\n- Commented out the previous implementation for clarity and future reference.",
   "branch": "main",
-  "committed_at": "2025-09-03T11:18:39+09:00",
-  "generated_at": "2025-09-03T02:19:31Z"
+  "committed_at": "2025-09-03T11:24:21+09:00",
+  "generated_at": "2025-09-03T02:25:55Z"
 }

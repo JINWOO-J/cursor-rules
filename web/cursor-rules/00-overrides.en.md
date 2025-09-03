@@ -7,7 +7,7 @@ source_sha: 008809e669d25471ab2a4146e164960ad382298243a3469f347d298bfd80185d
 # Project Specific Overrides
 
 ## Project Overrides
-- This project is for defining and managing Cursor Rules themselves.
+- This project defines and manages Cursor Rules itself.
 - Therefore, project-specific rules are defined in the `.cursorrules/project` directory.
 
 ## Specific to this project
