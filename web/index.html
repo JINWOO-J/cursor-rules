@@ -21,6 +21,9 @@
     .btn.warn { background: #3b2640; border-color: #6a2b70; }
     .grid { display: grid; gap: var(--gap); }
     .fields { display: grid; gap: var(--gap); grid-template-columns: repeat(2, 1fr); }
+    .preset-field { max-width: 300px; }
+    .preset-field select { font-size: 14px; }
+    .preset-field button { width: 100%; }
     .field { display: grid; gap: 6px; }
     .field label { font-size: 12px; opacity: .9; }
     input[type="text"], textarea, select { background: #0c1527; color: #e8eefb; border: 1px solid #29406c; border-radius: 10px; padding: 10px 12px; font: inherit; }
@@ -112,7 +115,13 @@
       <div class="row">
         <button class="btn" id="addRule">+ 규칙 추가</button>
         <button class="btn" id="loadDefaults">보안 기본 + 프로젝트 템플릿 불러오기</button>
-        <button class="btn" id="loadPresets">프리셋 불러오기</button>
+        <div class="field preset-field">
+          <label>🎯 개발 환경별 프리셋</label>
+          <select id="presetSelector">
+            <option value="">-- 프리셋을 선택하세요 --</option>
+          </select>
+          <button class="btn" id="loadSelectedPreset" style="margin-top: 5px;">선택한 프리셋 불러오기</button>
+        </div>
         <button class="btn" id="downloadAll">모든 규칙 .mdc 저장</button>
         <button class="btn ghost" id="clearAll">초기화</button>
         
@@ -210,6 +219,7 @@
     document.addEventListener('DOMContentLoaded', async () => {
         await loadMdFileList();
         await loadVersionInfo(); // 버전 정보 로드
+        await initPresetSelector(); // 프리셋 선택기 초기화
         initSearchableSelects();
     });
 
@@ -734,7 +744,11 @@
       if (!res.ok) throw new Error(`Failed to load presets: ${res.status}`);
       const json = await res.json();
       if (!Array.isArray(json.presets)) throw new Error('Invalid presets schema');
-      return json.presets;
+      return {
+        presets: json.presets,
+        categories: json.categories || {},
+        version: json.version || 1
+      };
     }
 
     async function fetchFilesJson(){
@@ -811,48 +825,110 @@
     console.log('----loadPresets');
     console.debug('----DEBUG --- loadPresets');
 
-    document.getElementById('loadPresets').onclick = async () => {
-      console.log('IN--- loadPresets'); // 이 로그가 보여야 정상
+    // 프리셋 선택기 초기화
+    async function initPresetSelector() {
       try {
-        // 1) 프리셋 & files.json
-        const [presets, files] = await Promise.all([fetchPresets(), fetchFilesJson()]);
-        const basesIndex = buildBaseIndex(files);
-
-        // 2) 전체 초기화
-        $rules.innerHTML = '';
-
-        // 3) 프리셋을 base 목록으로 전개
-        for (const p of presets) {
-          const basePaths = await expandPresetToBases(p, basesIndex);
-          if (basePaths.length === 0) continue;
-
-          // 4) 각 base에 대해 KR/EN 로드 → 카드 생성
-          for (const basePath of basePaths) {
-            const [krContent, enContent] = await loadPairForBase(files, basePath);
-
-            const scope = p.scope || (p.defaults && p.defaults.scope) || 'Auto';
-            const globs = p.globs || (p.defaults && p.defaults.globs) || '**/*';
-
-            let desc = p.desc || (p.defaults && p.defaults.desc) || '';
-            if (!desc) {
-              const baseName = basePath.split('/').pop().replace(/\.md$/,'').replace(/[-_]/g,' ');
-              const prefix = (p.defaults && p.defaults.descPrefix) ? p.defaults.descPrefix : '';
-              desc = (prefix + baseName).replace(/^\w/, c => c.toUpperCase());
-            }
-
-            await addRule({
-              desc,
-              scope,
-              globs,
-              bodyKr: krContent || '',
-              bodyEn: enContent || '',
-              basePath: basePath  // 프리셋에서 사용된 파일 경로 추가
-            });
-          }
+        const presetData = await fetchPresets();
+        const selector = document.getElementById('presetSelector');
+        
+        // 기존 옵션들 제거 (첫 번째 제외)
+        while (selector.options.length > 1) {
+          selector.remove(1);
         }
+        
+        // 카테고리별로 프리셋 그룹화
+        const groupedPresets = {};
+        presetData.presets.forEach(preset => {
+          const category = preset.category || 'other';
+          if (!groupedPresets[category]) {
+            groupedPresets[category] = [];
+          }
+          groupedPresets[category].push(preset);
+        });
+        
+        // 카테고리별로 옵션 그룹 생성
+        Object.keys(groupedPresets).forEach(categoryId => {
+          const category = presetData.categories[categoryId];
+          const optgroup = document.createElement('optgroup');
+          optgroup.label = category ? category.name : categoryId;
+          
+          groupedPresets[categoryId].forEach(preset => {
+            const option = document.createElement('option');
+            option.value = preset.id;
+            option.textContent = preset.name;
+            option.title = preset.description;
+            optgroup.appendChild(option);
+          });
+          
+          selector.appendChild(optgroup);
+        });
+        
+        console.log('프리셋 선택기 초기화 완료:', presetData.presets.length, '개 프리셋');
       } catch (e) {
-        console.error(e);
-        alert('프리셋을 불러오지 못했습니다.');
+        console.error('프리셋 선택기 초기화 실패:', e);
+      }
+    }
+
+    // 선택된 프리셋 로딩
+    document.getElementById('loadSelectedPreset').onclick = async () => {
+      const selector = document.getElementById('presetSelector');
+      const selectedPresetId = selector.value;
+      
+      if (!selectedPresetId) {
+        alert('프리셋을 먼저 선택해주세요.');
+        return;
+      }
+      
+      try {
+        const [presetData, files] = await Promise.all([fetchPresets(), fetchFilesJson()]);
+        const selectedPreset = presetData.presets.find(p => p.id === selectedPresetId);
+        
+        if (!selectedPreset) {
+          alert('선택된 프리셋을 찾을 수 없습니다.');
+          return;
+        }
+        
+        const basesIndex = buildBaseIndex(files);
+        
+        // 전체 초기화
+        $rules.innerHTML = '';
+        
+        // 선택된 프리셋을 base 목록으로 전개
+        const basePaths = await expandPresetToBases(selectedPreset, basesIndex);
+        
+        if (basePaths.length === 0) {
+          alert('프리셋에 해당하는 파일을 찾을 수 없습니다.');
+          return;
+        }
+        
+        // 각 base에 대해 KR/EN 로드 → 카드 생성
+        for (const basePath of basePaths) {
+          const [krContent, enContent] = await loadPairForBase(files, basePath);
+          
+          const scope = selectedPreset.scope || (selectedPreset.defaults && selectedPreset.defaults.scope) || 'Auto';
+          const globs = selectedPreset.globs || (selectedPreset.defaults && selectedPreset.defaults.globs) || '**/*';
+          
+          let desc = selectedPreset.desc || (selectedPreset.defaults && selectedPreset.defaults.desc) || '';
+          if (!desc) {
+            const baseName = basePath.split('/').pop().replace(/\.md$/,'').replace(/[-_]/g,' ');
+            const prefix = (selectedPreset.defaults && selectedPreset.defaults.descPrefix) ? selectedPreset.defaults.descPrefix : '';
+            desc = (prefix + baseName).replace(/^\w/, c => c.toUpperCase());
+          }
+          
+          await addRule({
+            desc,
+            scope,
+            globs,
+            bodyKr: krContent || '',
+            bodyEn: enContent || '',
+            basePath: basePath
+          });
+        }
+        
+        console.log(`프리셋 '${selectedPreset.name}' 로딩 완료:`, basePaths.length, '개 규칙');
+      } catch (e) {
+        console.error('프리셋 로딩 실패:', e);
+        alert('프리셋을 불러오는데 실패했습니다.');
       }
     };
 

@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'cursor-rules/**'
+      - 'scripts/**'
+      - 'web/**'           # 웹 정적파일 변경도 트리거
+      - '.github/workflows/**'
   workflow_dispatch:
 
 permissions:
@@ -19,13 +22,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      # 1. 레포 체크아웃
       - name: Checkout repository
         uses: actions/checkout@v4
 
-    
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -35,7 +35,6 @@ jobs:
         run: |
           pip install --upgrade google-generativeai pyyaml
 
-    
       - name: Translate KR → EN & stage into web/cursor-rules
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -47,10 +46,10 @@ jobs:
       - name: Generate files.json & version-info.json
         run: |
           bash scripts/generate_web.sh
+          echo '/*' > web/.nojekyll      # Jekyll 끄기(언더스코어 경로 문제 방지)
           echo "--- files.json preview ---"
           head -n 50 web/files.json || true
 
-    
       - name: Commit & push web/ changes
         run: |
           if [ -n "$(git status --porcelain web/)" ]; then
@@ -64,16 +63,18 @@ jobs:
             echo "No changes in web/"
           fi
 
-#       - name: Upload Pages artifact
-#         uses: actions/upload-pages-artifact@v3
-#         with:
-#           path: web
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
 
-#   deploy:
-#     needs: build
-#     runs-on: ubuntu-latest
-#     environment:
-#       name: github-pages
-#     steps:
-#       - id: deployment
-#         uses: actions/deploy-pages@v4
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

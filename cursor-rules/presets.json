@@ -1,23 +1,130 @@
 {
-  "version": 1,
+  "version": 2,
+  "categories": {
+    "essential": {
+      "name": "🔒 필수 기본 규칙",
+      "description": "모든 프로젝트에 권장되는 기본 규칙들"
+    },
+    "backend": {
+      "name": "🔧 백엔드 개발",
+      "description": "서버사이드 개발을 위한 규칙들"
+    },
+    "frontend": {
+      "name": "🎨 프론트엔드 개발", 
+      "description": "클라이언트사이드 개발을 위한 규칙들"
+    },
+    "fullstack": {
+      "name": "🌐 풀스택 개발",
+      "description": "전체 스택을 다루는 개발 규칙들"
+    },
+    "devops": {
+      "name": "⚙️ DevOps & 인프라",
+      "description": "배포, 컨테이너, 인프라 관련 규칙들"
+    }
+  },
   "presets": [
     {
-      "id": "security-baseline",
-      "name": "00: Security baseline (Always)",
-      "desc": "Organization Security & Secrets Baseline",
-      "scope": "Always",
-      "globs": "**/*",
-      "bodyKr": "# Security & Secrets\n\n- ...",
-      "bodyEn": "# Security & Secrets\n\n- ..."
+      "id": "essential-security",
+      "category": "essential",
+      "name": "보안 & Git 기본팩",
+      "description": "필수 보안 규칙과 Git 스타일 가이드",
+      "type": "query",
+      "include": [
+        "cursor-rules/common/10-security.md",
+        "cursor-rules/common/20-git-style.md"
+      ],
+      "defaults": {
+        "scope": "Always",
+        "globs": "**/*"
+      }
     },
     {
-      "id": "git-style",
-      "name": "10: Git style (Auto)",
-      "desc": "Git commit/pr style (sentence-style)",
+      "id": "python-backend",
+      "category": "backend", 
+      "name": "Python 백엔드 개발팩",
+      "description": "Python + FastAPI + Prisma 백엔드 개발을 위한 규칙들",
+      "type": "query",
+      "include": [
+        "cursor-rules/common/00-core.md",
+        "cursor-rules/common/10-security.md",
+        "cursor-rules/common/20-git-style.md",
+        "cursor-rules/common/stacks/python-fastapi.md",
+        "cursor-rules/common/stacks/db-prisma.md"
+      ],
+      "defaults": {
+        "scope": "Auto",
+        "globs": "**/*",
+        "descPrefix": "Python Backend: "
+      }
+    },
+    {
+      "id": "react-frontend",
+      "category": "frontend",
+      "name": "React 프론트엔드 개발팩", 
+      "description": "React + Tailwind UI 개발을 위한 규칙들",
+      "type": "query",
+      "include": [
+        "cursor-rules/common/00-core.md",
+        "cursor-rules/common/10-security.md",
+        "cursor-rules/common/20-git-style.md",
+        "cursor-rules/common/stacks/node-react.md",
+        "cursor-rules/common/stacks/ui-tailwind.md"
+      ],
+      "defaults": {
+        "scope": "Auto", 
+        "globs": "**/*",
+        "descPrefix": "React Frontend: "
+      }
+    },
+    {
+      "id": "fullstack-webapp",
+      "category": "fullstack",
+      "name": "풀스택 웹앱 개발팩",
+      "description": "React + Python + DB 전체 스택 개발 규칙들",
+      "type": "query",
+      "include": [
+        "cursor-rules/common/00-core.md",
+        "cursor-rules/common/10-security.md", 
+        "cursor-rules/common/20-git-style.md",
+        "cursor-rules/common/stacks/node-react.md",
+        "cursor-rules/common/stacks/python-fastapi.md",
+        "cursor-rules/common/stacks/db-prisma.md",
+        "cursor-rules/common/stacks/ui-tailwind.md"
+      ],
+      "defaults": {
+        "scope": "Auto",
+        "globs": "**/*",
+        "descPrefix": "Fullstack: "
+      }
+    },
+    {
+      "id": "docker-devops",
+      "category": "devops",
+      "name": "Docker & DevOps 팩",
+      "description": "컨테이너화와 배포를 위한 DevOps 규칙들",
+      "type": "query", 
+      "include": [
+        "cursor-rules/common/00-core.md",
+        "cursor-rules/common/10-security.md",
+        "cursor-rules/common/20-git-style.md",
+        "cursor-rules/common/stacks/docker-devops.md"
+      ],
+      "defaults": {
+        "scope": "Auto",
+        "globs": "**/*",
+        "descPrefix": "DevOps: "
+      }
+    },
+    {
+      "id": "ai-prompting",
+      "category": "essential",
+      "name": "AI 프롬프팅 & 레시피",
+      "description": "효과적인 AI 프롬프팅을 위한 레시피들",
+      "type": "base",
+      "base": "cursor-rules/common/stacks/prompt-recipes.md",
+      "desc": "AI 프롬프팅 레시피 모음",
       "scope": "Auto",
-      "globs": "**/*",
-      "bodyKr": "# Git & Commit Style\n\n- ...",
-      "bodyEn": "# Git & Commit Style\n\n- ..."
+      "globs": "**/*"
     }
   ]
 }

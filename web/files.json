@@ -1,4 +1,6 @@
 [
+{"path":"cursor-rules/_merged.en.md","raw_url":"https://raw.githubusercontent.com/undefined/undefined/cursor-rules/_merged.en.md","lang":"en"},
+{"path":"cursor-rules/_merged.kr.md","raw_url":"https://raw.githubusercontent.com/undefined/undefined/cursor-rules/_merged.kr.md","lang":"kr"},
 {"path":"cursor-rules/00-core.en.md","raw_url":"https://raw.githubusercontent.com/undefined/undefined/cursor-rules/00-core.en.md","lang":"en"},
 {"path":"cursor-rules/00-core.kr.md","raw_url":"https://raw.githubusercontent.com/undefined/undefined/cursor-rules/00-core.kr.md","lang":"kr"},
 {"path":"cursor-rules/00-overrides.en.md","raw_url":"https://raw.githubusercontent.com/undefined/undefined/cursor-rules/00-overrides.en.md","lang":"en"},
@@ -7,8 +9,6 @@
 {"path":"cursor-rules/10-security.kr.md","raw_url":"https://raw.githubusercontent.com/undefined/undefined/cursor-rules/10-security.kr.md","lang":"kr"},
 {"path":"cursor-rules/20-git-style.en.md","raw_url":"https://raw.githubusercontent.com/undefined/undefined/cursor-rules/20-git-style.en.md","lang":"en"},
 {"path":"cursor-rules/20-git-style.kr.md","raw_url":"https://raw.githubusercontent.com/undefined/undefined/cursor-rules/20-git-style.kr.md","lang":"kr"},
-{"path":"cursor-rules/_merged.en.md","raw_url":"https://raw.githubusercontent.com/undefined/undefined/cursor-rules/_merged.en.md","lang":"en"},
-{"path":"cursor-rules/_merged.kr.md","raw_url":"https://raw.githubusercontent.com/undefined/undefined/cursor-rules/_merged.kr.md","lang":"kr"},
 {"path":"cursor-rules/common/00-core.md","raw_url":"https://raw.githubusercontent.com/undefined/undefined/cursor-rules/common/00-core.md","lang":"und"},
 {"path":"cursor-rules/common/10-security.md","raw_url":"https://raw.githubusercontent.com/undefined/undefined/cursor-rules/common/10-security.md","lang":"und"},
 {"path":"cursor-rules/common/20-git-style.md","raw_url":"https://raw.githubusercontent.com/undefined/undefined/cursor-rules/common/20-git-style.md","lang":"und"},

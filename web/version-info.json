@@ -1,7 +1,7 @@
 {
-  "last_commit_id": "0634ab38bec89f7b2ac5616033847d169b3a55f4",
-  "last_commit_message": "feat(web): update web generation script and add index.html\n\n- Modified the web generation script to remove specific files before building.\n- Improved the logic for generating files.json by ensuring unique entries after sorting.\n- Added a new index.html file for the web interface, providing a structured layout and functionality for the Cursor Rules Builder.",
+  "last_commit_id": "7097f34ed31aab1ad97af0b1b73b561b77871836",
+  "last_commit_message": "feat(web): add automatic file selection based on basePath\n\n- Implemented functionality to automatically set the file selection in the UI based on the provided basePath in the prefill object.\n- Enhanced the expandPresetToBases function to improve base path handling and filtering logic.\n- Added debug logging for better traceability during preset loading and selection processes.",
   "branch": "undefined",
-  "committed_at": "2025-09-03T09:20:55+09:00",
-  "generated_at": "2025-09-03T01:11:10Z"
+  "committed_at": "2025-09-03T11:13:21+09:00",
+  "generated_at": "2025-09-03T02:16:17Z"
 }
