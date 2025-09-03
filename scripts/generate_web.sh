@@ -2,7 +2,9 @@
 set -euo pipefail
 
 echo "Building web/"
-rm -rf web
+rm -rf web/cursor-rules
+rm -rf web/files.json
+rm -rf web/version-info.json
 mkdir -p web
 
 # 1) files.json
@@ -10,29 +12,24 @@ MD_DIRS=("cursor-rules" "cursor-rules/common" "cursor-rules/project" "cursor-rul
 {
   echo "["
   first=true
-  for dir in "${MD_DIRS[@]}"; do
-    [ -d "$dir" ] || continue
-    # 안정적 순서
-    while IFS= read -r -d '' file; do
-      # lang 추론
-      base="$(basename "$file")"
-      lang="und"
-      [[ "$base" =~ \.en\.md$ ]] && lang="en"
-      [[ "$base" =~ \.kr\.md$ ]] && lang="kr"
-      $first || echo ","
-      first=false
-      RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}/${file}"
-      printf '{"path":"%s","raw_url":"%s","lang":"%s"}' "$file" "$RAW_URL" "$lang"
-    done < <(find "$dir" -type f -name "*.md" -print0 | sort -z)
-  done
+  # 정렬 후 중복 제거
+  while IFS= read -r -d '' file; do
+    base="$(basename "$file")"
+    lang="und"
+    [[ "$base" =~ \.kr\.md$ ]] && lang="kr"
+    [[ "$base" =~ \.en\.md$ ]] && lang="en"
+    $first || echo ","
+    first=false
+    RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}/${file}"
+    printf '{"path":"%s","raw_url":"%s","lang":"%s"}' "$file" "$RAW_URL" "$lang"
+  done < <(find web/cursor-rules -type f -name "*.md" -print0 \
+          | sort -zu | uniq -z)
   echo
   echo "]"
 } > web/files.json
 
-# 2) 원본 디렉터리 복사
 cp -rv cursor-rules web/ || true
 
-# 3) version-info.json
 cat > web/version-info.json <<JSON
 {
   "last_commit_id": "$(git rev-parse HEAD)",
