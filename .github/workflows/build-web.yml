@@ -2,11 +2,11 @@ name: Build & Translate (KR→EN) and Publish Web
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
     paths:
       - 'cursor-rules/**'
       - 'scripts/**'
-      - 'web/**'           # 웹 정적파일 변경도 트리거
+      - 'web/**'                 # 정적 자산 변경 시도 트리거
       - '.github/workflows/**'
   workflow_dispatch:
 
@@ -22,6 +22,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -30,6 +31,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
@@ -41,12 +43,13 @@ jobs:
         run: |
           python scripts/translate_and_copy.py
           echo "--- staged files under web/cursor-rules ---"
-          find web/cursor-rules -type f -name "*.md" | sort
+          find web/cursor-rules -type f -name "*.md" | sort || true
 
       - name: Generate files.json & version-info.json
         run: |
           bash scripts/generate_web.sh
-          echo '/*' > web/.nojekyll      # Jekyll 끄기(언더스코어 경로 문제 방지)
+          # GitHub Pages에서 언더스코어/폴더 무시 방지
+          echo > web/.nojekyll
           echo "--- files.json preview ---"
           head -n 50 web/files.json || true
 
@@ -57,7 +60,7 @@ jobs:
             git config --local user.name "github-actions[bot]"
             git add web/
             git commit -m "[skip ci] docs(web): auto-update translated files and indexes"
-            git pull --rebase || true
+            git pull --rebase --autostash || true
             git push
           else
             echo "No changes in web/"
@@ -67,6 +70,7 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: web
+          # optional: retention-days: 7
 
   deploy:
     needs: build
