@@ -4,6 +4,8 @@ echo "Building web/ indexes (preserving web/cursor-rules)"
 
 mkdir -p web
 cp index.html web/index.html
+cp cursor-rules/presets.json web/presets.json
+
 
 # GH 환경변수 안전 처리
 GITHUB_REF=${GITHUB_REF:-"undefined"}

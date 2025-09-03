@@ -615,12 +615,11 @@
           if (fileKeySelector.value === 'path') {
             let path = entry.path;
             
-            // GitHub Pages 프로젝트 사이트에서 경로 보정
+            // GitHub Pages 프로젝트 사이트에서는 web/ 디렉토리가 루트가 되므로
+            // files.json의 cursor-rules/ 경로를 그대로 사용해야 함
             if (window.location.pathname.includes('/cursor-rules/')) {
-              // "cursor-rules/xxx.md" -> "cursor-rules/cursor-rules/xxx.md"
-              if (path.startsWith('cursor-rules/') && !path.startsWith('cursor-rules/cursor-rules/')) {
-                path = 'cursor-rules/' + path;
-              }
+              // path가 이미 cursor-rules/로 시작하므로 그대로 사용
+              console.log(`loadFileContent GitHub Pages: ${path}`);
             }
             
             return BASE_PATH + path;
@@ -902,13 +901,11 @@
         let path = entry.path;
         const originalPath = path;
         
-        // GitHub Pages 프로젝트 사이트에서 경로 보정
+        // GitHub Pages 프로젝트 사이트에서는 web/ 디렉토리가 루트가 되므로
+        // files.json의 cursor-rules/ 경로를 그대로 사용해야 함
         if (window.location.pathname.includes('/cursor-rules/')) {
-          // "cursor-rules/xxx.md" -> "cursor-rules/cursor-rules/xxx.md"
-          if (path.startsWith('cursor-rules/') && !path.startsWith('cursor-rules/cursor-rules/')) {
-            path = 'cursor-rules/' + path;
-            console.log(`Path adjusted: ${originalPath} -> ${path}`);
-          }
+          // path가 이미 cursor-rules/로 시작하므로 그대로 사용
+          console.log(`GitHub Pages: ${originalPath} -> ${path}`);
         }
         
         const finalUrl = BASE_PATH + path;
