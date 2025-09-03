@@ -35,13 +35,17 @@ OUT_ROOT = ROOT / "web" / "cursor-rules"
 
 GLOSSARY_PATH = ROOT / "cursor-rules" / "glossary.kr-en.json"  # optional
 API_KEY = os.environ.get("GEMINI_API_KEY")
-MODEL = "gemini-2.0-flash"  # 필요시 pro로 변경
+MODEL = "gemini-2.0-flash-light"  # 필요시 pro로 변경
+# MODEL = 'gemini-1.5-flash-8b'
 
 if not API_KEY:
     print("GEMINI_API_KEY is not set", file=sys.stderr)
     sys.exit(1)
 
 genai.configure(api_key=API_KEY)
+# for m in genai.list_models():
+#     print(m.name, getattr(m, "supported_generation_methods", []))
+
 model = genai.GenerativeModel(MODEL)
 
 FRONT_MATTER_RE = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
