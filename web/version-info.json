@@ -1,7 +1,7 @@
 {
-  "last_commit_id": "ad0bcb81e64084b9ec843951004081f860776ca5",
-  "last_commit_message": "feat(workflow): add new build and translation workflow for web\n\n- Introduced a new GitHub Actions workflow to build and translate web content from Korean to English.\n- The workflow triggers on pushes to the main branch and includes steps for building the web directory, generating version information, and uploading artifacts.\n- Removed the obsolete `generate-file-list.yml` workflow and integrated its functionality into the new workflow for better efficiency.\n",
+  "last_commit_id": "532e819d5cbef4e8a9be74ab83cd12cb2f850e9c",
+  "last_commit_message": "[skip ci] docs(web): auto-update translated files and indexes\n",
   "branch": "main",
-  "committed_at": "2025-09-03T09:09:08+09:00",
-  "generated_at": "2025-09-03T00:10:07Z"
+  "committed_at": "2025-09-03T00:10:07Z",
+  "generated_at": "2025-09-03T00:11:36Z"
 }
