@@ -1,6 +1,7 @@
 # Cursor Rules 프로젝트
 
-[![cursor-rules](https://github.com//actions/workflows/cursor-rules.yml/badge.svg)](https://github.com//actions/workflows/cursor-rules.yml)
+[![Build & Deploy](https://github.com/JINWOO-J/cursor-rules/actions/workflows/build-web.yml/badge.svg)](https://github.com/JINWOO-J/cursor-rules/actions/workflows/build-web.yml)
+[![Web Builder](https://img.shields.io/badge/Web_Builder-Live-brightgreen?logo=github-pages)](https://jinwoo-j.github.io/cursor-rules/)
 
 이 프로젝트는 팀 내에서 일관된 코드 품질, 보안 준수 및 개발 속도를 유지하기 위해 Cursor Rules를 정의하고 관리합니다.
 
@@ -26,10 +27,10 @@ Cursor는 강력한 AI 기반 코드 편집기입니다. 하지만 팀 내에서
 - **개발 속도 향상**: AI가 팀의 규칙에 맞는 코드를 제안함으로써, 개발자는 더 빠르게 작업할 수 있습니다.
 - **온보딩 시간 단축**: 새로운 팀원이 팀의 규칙을 빠르게 이해하고 따를 수 있습니다.
 
-## 프로젝트 구조
+## 📁 프로젝트 구조
 
 ```
-.cursorrules/
+cursor-rules/            # 📝 규칙 작성 (소스)
 ├── common/              # 조직 전체에 적용되는 공통 규칙
 │   ├── 00-core.md       # 핵심 규칙 (응답 방식, 코드 리뷰 원칙 등)
 │   ├── 10-security.md   # 보안 규칙 (시크릿 관리, 의존성 관리 등)
@@ -40,13 +41,26 @@ Cursor는 강력한 AI 기반 코드 편집기입니다. 하지만 팀 내에서
 │       ├── python-fastapi.md
 │       ├── ui-tailwind.md
 │       ├── db-prisma.md
-│       └── prompt-recipes.md  # 팀에서 자주 사용하는 Prompt Recipes
+│       └── prompt-recipes.md
 ├── project/             # 현재 프로젝트에 특화된 규칙
 │   └── 00-overrides.md
 ├── generated/           # 자동 생성된 규칙 파일
 │   └── _merged.md
-└──.md                 # 루트에 위치한 규칙 합본 (코드 리뷰 시 가시성을 위해 커밋됨)
+├── presets.json         # 🎯 프리셋 정의 (개발환경별 규칙 조합)
+└── glossary.kr-en.json  # 🌍 번역 용어집
+
+web/                     # 🌐 동적 빌드 결과 (커밋하지 않음!)
+├── index.html          # Builder UI (GitHub Pages)
+├── files.json          # 동적 생성된 파일 인덱스
+├── version-info.json   # 빌드 메타데이터
+└── cursor-rules/       # 번역된 규칙들 (KR/EN 쌍)
 ```
+
+### 🔄 동적 빌드 구조의 장점
+- **📝 Source of Truth**: `cursor-rules/`만 수정하면 모든 것이 자동 처리
+- **🚫 No Git Conflicts**: `web/` 폴더는 빌드 결과물이므로 커밋하지 않음
+- **🌍 자동 번역**: KR → EN 번역이 빌드 시 자동 수행
+- **⚡ 즉시 반영**: 수정 즉시 웹사이트에 반영
 
 ## 빠른 시작
 
@@ -99,36 +113,75 @@ Cursor는 강력한 AI 기반 코드 편집기입니다. 하지만 팀 내에서
 - **Prisma 마이그레이션 검토**: "컴포지트 키/관계 명명 규칙 준수 여부, 다운 마이그레이션 경로, 위험도(High/Medium/Low) 3단계로 리뷰 요약."
 - **Python 3.13 FastAPI 보일러플레이트**: "mypy --strict 통과, pydantic v2, 동기/비동기 혼용 금지, 라우터/스키마/서비스 레이어 모듈 분리 스캐폴딩 생성."
 
-## 웹 기반 Builder 도구
+## 🌐 웹 기반 Builder 도구
 
-이 프로젝트는 웹 기반 Builder 도구를 제공하여, Markdown 형식의 규칙 파일을 `.mdc` 형식으로 쉽게 변환하고 관리할 수 있습니다. 이 도구는 정적 웹 페이지로 제공되며, GitHub Actions를 통해 자동으로 배포됩니다.
+**🔗 바로 사용: [https://jinwoo-j.github.io/cursor-rules/](https://jinwoo-j.github.io/cursor-rules/)**
 
-### 작동 방식
+이 프로젝트는 웹 기반 Builder 도구를 제공하여, Markdown 형식의 규칙 파일을 `.mdc` 형식으로 쉽게 변환하고 관리할 수 있습니다. 이 도구는 **완전 동적으로 빌드**되어 rebase 지옥을 피하면서도 최신 내용을 제공합니다.
 
-1.  **md 수정**: 팀원이 `.cursorrules` 디렉토리 내의 Markdown 파일을 수정합니다.
-2.  **github repo push**: 수정된 파일을 GitHub 저장소에 푸시합니다.
-3.  **static 웹 배포**: GitHub Actions 워크플로우가 자동으로 실행되어 `web/files.json` 파일을 생성하고, GitHub Pages를 통해 웹 페이지를 배포합니다.
-4.  **사용자 선택**: 사용자가 웹 페이지에 접속하여 필요한 Markdown 파일을 선택합니다.
-5.  **복붙**: Builder 도구가 선택된 파일의 내용을 기반으로 `.mdc` 형식의 규칙을 생성하고, 사용자는 이를 복사하여 사용할 수 있습니다.
+### 🔄 동적 빌드 방식
 
-### 웹 페이지 사용법
+1.  **📝 규칙 작성**: `cursor-rules/` 디렉토리 내의 Markdown 파일을 수정합니다.
+2.  **🚀 Push**: 수정된 파일을 GitHub 저장소에 푸시합니다.
+3.  **⚡ 실시간 빌드**: GitHub Actions가 자동으로:
+    - KR → EN 번역 (Google Gemini AI)
+    - `files.json`, `version-info.json` 생성
+    - GitHub Pages에 직접 배포 (커밋 없음!)
+4.  **🎯 즉시 사용**: 웹 페이지에서 최신 파일들을 바로 불러와 `.mdc` 생성
 
-1.  GitHub Pages URL (예: `https://<username>.github.io/cursor-rules/`)로 접속합니다.
-2.  "규칙 추가" 버튼을 클릭하여 새로운 규칙 카드를 생성합니다.
-3.  파일 선택 드롭다운에서 원하는 Markdown 파일을 선택합니다.
-4.  "파일 내용 불러오기" 버튼을 클릭하여 파일의 내용을 불러옵니다.
-5.  필요에 따라 설명, Scope, globs 등을 수정합니다.
-6.  "미리보기" 버튼을 클릭하여 생성된 `.mdc` 파일의 내용을 확인합니다.
-7.  "내용 복사" 또는 ".mdc 저장" 버튼을 사용하여 결과물을 가져옵니다.
+### ✨ 주요 특징
 
-### GitHub Actions 워크플로우
+- **🚫 No Git Conflicts**: `web/` 폴더에 커밋하지 않아 rebase 지옥 방지
+- **🌏 다국어 지원**: 한국어 ↔ 영어 동시 편집 및 번역
+- **📦 개발환경별 프리셋**: Python, React, 풀스택, DevOps 등 6가지 프리셋 제공  
+- **🔍 검색 가능**: 대량의 규칙 파일에서 빠른 검색
+- **📱 반응형**: 모바일에서도 편리하게 사용 가능
 
-`.github/workflows/generate-file-list.yml` 파일은 다음과 같은 역할을 합니다:
+### 🎯 웹 페이지 사용법
 
--   `main` 브랜치에 변경 사항이 푸시되거나, 수동으로 실행되면 작동합니다.
--   `.cursorrules` 디렉토리 및 하위 디렉토리에서 `.md` 파일을 찾아 `web/files.json` 파일을 생성합니다.
--   생성된 `web/files.json` 파일을 커밋하고 푸시합니다.
--   GitHub Pages 설정이 되어 있다면, 웹 페이지가 자동으로 업데이트됩니다.
+#### 방법 1: 프리셋 사용 (추천)
+1.  **🎯 개발환경별 프리셋** 드롭다운에서 원하는 환경 선택
+   - 🔒 **필수 기본 규칙**: 보안, Git 스타일, AI 프롬프팅
+   - 🔧 **Python 백엔드 개발팩**: FastAPI + Prisma + 보안
+   - 🎨 **React 프론트엔드 개발팩**: React + Tailwind + UI
+   - 🌐 **풀스택 웹앱 개발팩**: 전체 스택 통합 규칙
+   - ⚙️ **DevOps & 인프라팩**: Docker + 컨테이너 + 배포
+2.  선택 즉시 자동으로 해당 환경의 모든 규칙이 로드됩니다.
+3.  각 규칙 카드에서 **"내용 복사"** 또는 **".mdc 저장"** 사용
+
+#### 방법 2: 개별 규칙 추가
+1.  **"+ 규칙 추가"** 버튼 클릭
+2.  **파일명 (.mdc)** 드롭다운에서 원하는 Markdown 파일 선택
+3.  **"파일 내용 불러오기"** 버튼으로 KR/EN 내용 자동 로드
+4.  필요시 설명, Scope, globs 수정
+5.  **"미리보기"** → **"내용 복사"** 또는 **".mdc 저장"**
+
+### ⚙️ GitHub Actions 워크플로우 (동적 빌드)
+
+`.github/workflows/build-web.yml`은 **rebase 지옥을 피하는 동적 빌드** 방식을 사용합니다:
+
+#### 🔄 동작 과정
+1.  **트리거**: `cursor-rules/**` 파일 변경 시 자동 실행
+2.  **번역**: Google Gemini AI로 KR → EN 자동 번역
+3.  **인덱스 생성**: `files.json`, `version-info.json` 동적 생성
+4.  **직접 배포**: GitHub Pages에 바로 배포 (**커밋 없음!**)
+
+#### 🎯 장점
+- **🚫 Git 충돌 방지**: `web/` 폴더에 커밋하지 않음
+- **⚡ 빠른 배포**: 빌드와 동시에 즉시 반영
+- **🔄 항상 최신**: 소스 변경 시 자동으로 웹사이트 업데이트
+- **🌍 다국어 자동화**: 번역과 배포를 한 번에 처리
+
+```yaml
+# 기존 방식 (문제): 커밋 후 rebase 지옥
+# - name: Commit & push web/ changes (❌ 주석 처리됨)
+
+# 새로운 방식 (해결): 동적 빌드 후 직접 배포  
+- name: Upload Pages artifact
+  uses: actions/upload-pages-artifact@v3
+  with:
+    path: web
+```
 
 ## CI/CD 통합
 

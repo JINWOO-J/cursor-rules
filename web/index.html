@@ -236,106 +236,106 @@
 
     // 페이지 로드 시 파일 목록 가져오기
     document.addEventListener('DOMContentLoaded', async () => {
-        await loadMdFileList();
-        await loadVersionInfo(); // 버전 정보 로드
-        await initPresetSelector(); // 프리셋 선택기 초기화
-        initSearchableSelects();
+      await loadMdFileList();
+      await loadVersionInfo(); // 버전 정보 로드
+      await initPresetSelector(); // 프리셋 선택기 초기화
+      initSearchableSelects();
     });
 
     // 버전 정보 로드 및 표시
     async function loadVersionInfo() {
-        try {
-            const response = await fetch(BASE_PATH + 'version-info.json');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const versionInfo = await response.json();
-            
-            const versionInfoDiv = document.getElementById('version-info');
-            versionInfoDiv.innerHTML = `
-                <div>Branch: <strong>${versionInfo.branch}</strong></div>
-                <div>Last Commit: <strong>${versionInfo.last_commit_id.substring(0, 7)}</strong> (${new Date(versionInfo.committed_at).toLocaleString()})</div>
-                <div>Message: ${versionInfo.last_commit_message}</div>
-                <div>Generated: ${new Date(versionInfo.generated_at).toLocaleString()}</div>
-            `;
-        } catch (error) {
-            console.error('버전 정보를 불러오는 중 오류 발생:', error);
-            // 오류 발생 시 버전 정보 영역 숨기기
-            const versionInfoDiv = document.getElementById('version-info');
-            versionInfoDiv.style.display = 'none';
+      try {
+        const response = await fetch(BASE_PATH + 'version-info.json');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
+        const versionInfo = await response.json();
+        
+        const versionInfoDiv = document.getElementById('version-info');
+        versionInfoDiv.innerHTML = `
+          <div>Branch: <strong>${versionInfo.branch}</strong></div>
+          <div>Last Commit: <strong>${versionInfo.last_commit_id.substring(0, 7)}</strong> (${new Date(versionInfo.committed_at).toLocaleString()})</div>
+          <div>Message: ${versionInfo.last_commit_message}</div>
+          <div>Generated: ${new Date(versionInfo.generated_at).toLocaleString()}</div>
+        `;
+      } catch (error) {
+        console.error('버전 정보를 불러오는 중 오류 발생:', error);
+        // 오류 발생 시 버전 정보 영역 숨기기
+        const versionInfoDiv = document.getElementById('version-info');
+        versionInfoDiv.style.display = 'none';
+      }
     }
 
     // files.json 키 선택 변경 이벤트
     fileKeySelector.addEventListener('change', (e) => {
-        currentFileKey = e.target.value;
-        loadMdFileList();
+      currentFileKey = e.target.value;
+      loadMdFileList();
     });
 
     // 검색 가능한 selectbox 초기화
     function initSearchableSelects() {
-        const selects = document.querySelectorAll('.searchable-select');
-        selects.forEach(selectDiv => {
-            const selectedDiv = selectDiv.querySelector('.select-selected');
-            const itemsDiv = selectDiv.querySelector('.select-items');
-            const searchInput = itemsDiv.querySelector('.select-search');
-            const selectElement = selectDiv.querySelector('select');
-            
-            selectedDiv.addEventListener('click', (e) => {
-                e.stopPropagation();
-                closeAllSelect(selectedDiv);
-                itemsDiv.classList.toggle('select-hide');
-                selectedDiv.classList.toggle('select-arrow-active');
-            });
-            
-            searchInput.addEventListener('input', (e) => {
-                const filter = e.target.value.toUpperCase();
-                const items = itemsDiv.querySelectorAll('div:not(.select-search)');
-                items.forEach(item => {
-                    const txtValue = item.textContent || item.innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        item.style.display = "";
-                    } else {
-                        item.style.display = "none";
-                    }
-                });
-            });
-            
-            const options = selectElement.querySelectorAll('option');
-            options.forEach(option => {
-                if (option.value) {
-                    const item = document.createElement('DIV');
-                    item.innerHTML = option.innerHTML;
-                    item.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        selectedDiv.innerHTML = option.innerHTML;
-                        selectElement.value = option.value;
-                        closeAllSelect();
-                    });
-                    itemsDiv.appendChild(item);
-                }
-            });
+      const selects = document.querySelectorAll('.searchable-select');
+      selects.forEach(selectDiv => {
+        const selectedDiv = selectDiv.querySelector('.select-selected');
+        const itemsDiv = selectDiv.querySelector('.select-items');
+        const searchInput = itemsDiv.querySelector('.select-search');
+        const selectElement = selectDiv.querySelector('select');
+        
+        selectedDiv.addEventListener('click', (e) => {
+          e.stopPropagation();
+          closeAllSelect(selectedDiv);
+          itemsDiv.classList.toggle('select-hide');
+          selectedDiv.classList.toggle('select-arrow-active');
         });
         
-        document.addEventListener('click', closeAllSelect);
+        searchInput.addEventListener('input', (e) => {
+          const filter = e.target.value.toUpperCase();
+          const items = itemsDiv.querySelectorAll('div:not(.select-search)');
+          items.forEach(item => {
+            const txtValue = item.textContent || item.innerText;
+            if (txtValue.toUpperCase().indexOf(filter) > -1) {
+              item.style.display = "";
+            } else {
+              item.style.display = "none";
+            }
+          });
+        });
+        
+        const options = selectElement.querySelectorAll('option');
+        options.forEach(option => {
+          if (option.value) {
+            const item = document.createElement('DIV');
+            item.innerHTML = option.innerHTML;
+            item.addEventListener('click', (e) => {
+              e.stopPropagation();
+              selectedDiv.innerHTML = option.innerHTML;
+              selectElement.value = option.value;
+              closeAllSelect();
+            });
+            itemsDiv.appendChild(item);
+          }
+        });
+      });
+      
+      document.addEventListener('click', closeAllSelect);
     }
     
     function closeAllSelect(elmnt) {
-        const arrNo = [];
-        const selectSelected = document.querySelectorAll('.select-selected');
-        const selectItems = document.querySelectorAll('.select-items');
-        for (let i = 0; i < selectSelected.length; i++) {
-            if (elmnt == selectSelected[i]) {
-                arrNo.push(i)
-            } else {
-                selectSelected[i].classList.remove('select-arrow-active');
-            }
+      const arrNo = [];
+      const selectSelected = document.querySelectorAll('.select-selected');
+      const selectItems = document.querySelectorAll('.select-items');
+      for (let i = 0; i < selectSelected.length; i++) {
+        if (elmnt == selectSelected[i]) {
+          arrNo.push(i)
+        } else {
+          selectSelected[i].classList.remove('select-arrow-active');
         }
-        for (let i = 0; i < selectItems.length; i++) {
-            if (arrNo.indexOf(i)) {
-                selectItems[i].classList.add('select-hide');
-            }
+      }
+      for (let i = 0; i < selectItems.length; i++) {
+        if (arrNo.indexOf(i)) {
+          selectItems[i].classList.add('select-hide');
         }
+      }
     }
 
     async function loadMdFileList() {
@@ -742,6 +742,44 @@
     //     });
     //   }
     // }
+    function normBase(p) {
+      if (!p) return '';
+      let s = String(p).trim();
+
+      // 앞뒤 프리픽스 정리
+      s = s.replace(/^\.\/+/, '');
+      s = s.replace(/^\/+/, '');
+
+      // 빌드 산출물 경로 제거
+      s = s.replace(/^web\/+/, '');
+
+      // 중복된 cursor-rules/ 접두 정규화
+      // "cursor-rules/cursor-rules/x.md" -> "cursor-rules/x.md"
+      s = s.replace(/^cursor-rules\/+cursor-rules\//, 'cursor-rules/');
+
+      // GH Pages 절대경로 (예: "/cursor-rules/foo.md") -> 상대 표기
+      s = s.replace(/^cursor-rules\/+/, 'cursor-rules/');  // idempotent
+      s = s.replace(/^\/?cursor-rules\/+/, 'cursor-rules/');
+
+      // 상대 경로라면 repo 루트 기준으로 정규화
+      if (!s.startsWith('cursor-rules/')) {
+        s = 'cursor-rules/' + s;
+      }
+
+      // 언어 접미사는 .md 기준으로 통일
+      s = s.replace(/\.kr\.md$/i, '.md').replace(/\.en\.md$/i, '.md');
+
+      return s;
+    }
+
+    function candidateForms(basePath) {
+      const abs = normBase(basePath);                      // "cursor-rules/a/b.md"
+      const rel = abs.replace(/^cursor-rules\//, '');      // "a/b.md"
+      const webAbs = 'web/' + abs;                         // "web/cursor-rules/a/b.md"
+      const siteAbs = 'cursor-rules/' + rel;               // "cursor-rules/a/b.md" (same as abs, but 안전하게)
+      return Array.from(new Set([abs, rel, webAbs, siteAbs]));
+    }
+
     function globToRegExp(glob){
       // 매우 단순한 glob: **, *, ? 만 지원
       const re = glob
@@ -751,6 +789,16 @@
         .replace(/\?/g, '[^/]')
         .replace(/§§DOUBLESTAR§§/g, '.*');
       return new RegExp('^' + re + '$');
+    }
+
+    function anyMatch(forms, globs){
+      if (!globs || globs.length === 0) return true;
+      return forms.some(f => globs.some(g => globToRegExp(g).test(f)));
+    }
+
+    function noneMatch(forms, globs){
+      if (!globs || globs.length === 0) return true;
+      return forms.every(f => globs.every(g => !globToRegExp(g).test(f)));
     }
 
     function matchGlobs(path, include = ['**/*'], exclude = []){
@@ -833,49 +881,105 @@
       return [await krContent, await enContent];
     }
 
-    async function expandPresetToBases(preset, bases){
-      // bases: [{ base, kr, en, plain }], base 예: 'cursor-rules/common/stacks/node-react.md'
-      const include = Array.isArray(preset.include) ? preset.include : (preset.type === 'query' ? ['**/*.md'] : []);
-      const exclude = Array.isArray(preset.exclude) ? preset.exclude : [];
+    function buildMatcher(globs) {
+      // globs: 문자열 배열(경로/패턴 혼합)
+      // 각 항목을 candidateForms로 확장 + 정규화해 "직접일치 세트"와 "정규식 세트" 모두 준비
+      const eqSet = new Set();   // 완전일치용
+      const reList = [];         // glob 패턴용
 
-      const matches = (basePath) => {
-        const rel = basePath.replace(/^cursor-rules\//, ''); // 상대경로
-        const incOk = (
-          include.length === 0 ||
-          include.some(g => matchGlobs(basePath, [g], []) || matchGlobs(rel, [g], []))
-        );
-        const excOk = (
-          exclude.length === 0 ||
-          exclude.every(g => !matchGlobs(basePath, [g], []) && !matchGlobs(rel, [g], []))
-        );
-        return incOk && excOk;
+      (globs || []).forEach(g => {
+        if (!g) return;
+        const forms = candidateForms(g);
+        forms.forEach(f => eqSet.add(f));
+        // glob 패턴으로도 동작하게 함 (정규화된 대표 abs만 사용)
+        reList.push(globToRegExp(normBase(g)));
+      });
+
+      return {
+        anyMatch(forms) {
+          // 1) 완전일치 먼저
+          for (const f of forms) if (eqSet.has(f)) return true;
+          // 2) glob 패턴
+          for (const f of forms) {
+            for (const re of reList) if (re.test(f)) return true;
+          }
+          return eqSet.size === 0 && reList.length === 0; // 비어있으면 허용
+        },
+        noneMatch(forms) {
+          if (eqSet.size === 0 && reList.length === 0) return true;
+          // eqSet/regex 중 하나라도 걸리면 제외 대상
+          for (const f of forms) {
+            if (eqSet.has(f)) return false;
+            for (const re of reList) if (re.test(f)) return false;
+          }
+          return true;
+        }
       };
+    }
 
-      // type: 'base'
-      if (preset.type === 'base' && typeof preset.base === 'string'){
-        const wanted = preset.base.replace(/\.kr\.md$|\.en\.md$/i, '.md');
-        const abs = wanted.startsWith('cursor-rules/') ? wanted : ('cursor-rules/' + wanted);
-        const found = bases.find(b => b.base === abs);
+    function fileNameOf(p) {
+      const s = normBase(p);
+      const i = s.lastIndexOf('/');
+      return i >= 0 ? s.slice(i + 1) : s;
+    }
+
+
+    async function expandPresetToBases(preset, bases) {
+      const includeGlobs = Array.isArray(preset.include)
+        ? preset.include
+        : (preset.type === 'query' ? ['**/*.md'] : []);
+      const excludeGlobs = Array.isArray(preset.exclude) ? preset.exclude : [];
+
+      const inc = buildMatcher(includeGlobs);
+      const exc = buildMatcher(excludeGlobs);
+
+      // type: 'base' — 단건 지정
+      if (preset.type === 'base' && typeof preset.base === 'string') {
+        const wantedForms = candidateForms(preset.base);
+        const found = bases.find(b => {
+          const forms = candidateForms(b.base);
+          // 직접 일치 + 파일명 end-with 보조
+          const direct = forms.some(f => wantedForms.includes(f));
+          const endWith = fileNameOf(forms[0]) === fileNameOf(wantedForms[0]);
+          return direct || endWith;
+        });
         const list = found ? [found.base] : [];
-        console.debug('[preset:base]', preset.id, '→', list);
+        console.debug('[preset:base]', preset.id, 'wanted:', preset.base, '→', list);
         return list;
       }
 
-      // type: 'query'
-      if (preset.type === 'query'){
-        const list = bases
+      // type: 'query' — 다건 매칭
+      if (preset.type === 'query') {
+        const matched = bases
           .map(b => b.base)
-          .filter(basePath => matches(basePath));
-        console.debug('[preset:query]', preset.id, 'matched', list.length);
-        return list;
+          .filter(basePath => {
+            const forms = candidateForms(basePath);
+            const inOk = inc.anyMatch(forms);
+            const exOk = exc.noneMatch(forms);
+            if (inOk && exOk) return true;
+
+            // 추가 보조: include가 "정확 파일명들"로만 구성된 경우 파일명만 비교 허용
+            const incAreFilenamesOnly =
+              (preset.include || []).length > 0 &&
+              (preset.include || []).every(x => !String(x).includes('*') && !String(x).includes('?') && !String(x).includes('**'));
+            if (incAreFilenamesOnly) {
+              const myFile = fileNameOf(forms[0]);
+              const incFiles = new Set((preset.include || []).map(fileNameOf));
+              if (incFiles.has(myFile) && exOk) return true;
+            }
+            return false;
+          });
+
+        console.debug('[preset:query]', preset.id,
+          'include:', includeGlobs, 'exclude:', excludeGlobs,
+          'candidates:', bases.length, 'matched:', matched.length);
+        return matched;
       }
 
       return [];
     }
 
-    console.log('----loadPresets');
-    console.debug('----DEBUG --- loadPresets');
-
+    
     // 프리셋 선택기 초기화
     async function initPresetSelector() {
       try {
@@ -923,132 +1027,67 @@
     // 선택된 프리셋 로딩
 
     async function loadPresetFromSelector() {
-        const selector = document.getElementById('presetSelector');
-        const selectedPresetId = selector.value;
+      const selector = document.getElementById('presetSelector');
+      const selectedPresetId = selector.value;
 
-        if (!selectedPresetId) {
-          // 아무 것도 선택 안 되었으면 리턴 (알림은 생략)
+      if (!selectedPresetId) {
+        // 아무 것도 선택 안 되었으면 리턴 (알림은 생략)
+        return;
+      }
+
+      try {
+        const [presetData, files] = await Promise.all([fetchPresets(), fetchFilesJson()]);
+        const selectedPreset = presetData.presets.find(p => p.id === selectedPresetId);
+
+        if (!selectedPreset) {
+          alert('선택된 프리셋을 찾을 수 없습니다.');
           return;
         }
 
-        try {
-          const [presetData, files] = await Promise.all([fetchPresets(), fetchFilesJson()]);
-          const selectedPreset = presetData.presets.find(p => p.id === selectedPresetId);
+        const basesIndex = buildBaseIndex(files);
 
-          if (!selectedPreset) {
-            alert('선택된 프리셋을 찾을 수 없습니다.');
-            return;
-          }
+        // 전체 초기화
+        $rules.innerHTML = '';
+        
+        const basePaths = await expandPresetToBases(selectedPreset, basesIndex);
+        console.log('basePaths:', basePaths);
 
-          const basesIndex = buildBaseIndex(files);
-
-          // 전체 초기화
-          $rules.innerHTML = '';
-
-          // 선택된 프리셋을 base 목록으로 전개
-          const basePaths = await expandPresetToBases(selectedPreset, basesIndex);
-
-          if (basePaths.length === 0) {
-            alert('프리셋에 해당하는 파일을 찾을 수 없습니다.');
-            return;
-          }
-
-          // 각 base에 대해 KR/EN 로드 → 카드 생성
-          for (const basePath of basePaths) {
-            const [krContent, enContent] = await loadPairForBase(files, basePath);
-
-            const scope = selectedPreset.scope || (selectedPreset.defaults && selectedPreset.defaults.scope) || 'Auto';
-            const globs = selectedPreset.globs || (selectedPreset.defaults && selectedPreset.defaults.globs) || '**/*';
-
-            let desc = selectedPreset.desc || (selectedPreset.defaults && selectedPreset.defaults.desc) || '';
-            if (!desc) {
-              const baseName = basePath.split('/').pop().replace(/\.md$/,'').replace(/[-_]/g,' ');
-              const prefix = (selectedPreset.defaults && selectedPreset.defaults.descPrefix) ? selectedPreset.defaults.descPrefix : '';
-              desc = (prefix + baseName).replace(/^\w/, c => c.toUpperCase());
-            }
-
-            await addRule({
-              desc,
-              scope,
-              globs,
-              bodyKr: krContent || '',
-              bodyEn: enContent || '',
-              basePath: basePath
-            });
-          }
-
-          console.log(`프리셋 '${selectedPreset.name}' 로딩 완료:`, basePaths.length, '개 규칙');
-        } catch (e) {
-          console.error('프리셋 로딩 실패:', e);
-          alert('프리셋을 불러오는데 실패했습니다.');
+        if (basePaths.length === 0) {
+          alert('프리셋에 해당하는 파일을 찾을 수 없습니다.');
+          return;
         }
-      }    
 
-    // document.getElementById('loadSelectedPreset').onclick = async () => {
-    //   const selector = document.getElementById('presetSelector');
-    //   const selectedPresetId = selector.value;
-      
-    //   if (!selectedPresetId) {
-    //     alert('프리셋을 먼저 선택해주세요.');
-    //     return;
-    //   }
-      
-    //   try {
-    //     const [presetData, files] = await Promise.all([fetchPresets(), fetchFilesJson()]);
-    //     const selectedPreset = presetData.presets.find(p => p.id === selectedPresetId);
-        
-    //     if (!selectedPreset) {
-    //       alert('선택된 프리셋을 찾을 수 없습니다.');
-    //       return;
-    //     }
-        
-    //     const basesIndex = buildBaseIndex(files);
-        
-    //     // 전체 초기화
-    //     $rules.innerHTML = '';
-        
-    //     // 선택된 프리셋을 base 목록으로 전개
-    //     const basePaths = await expandPresetToBases(selectedPreset, basesIndex);
-        
-    //     if (basePaths.length === 0) {
-    //       alert('프리셋에 해당하는 파일을 찾을 수 없습니다.');
-    //       return;
-    //     }
-        
-    //     // 각 base에 대해 KR/EN 로드 → 카드 생성
-    //     for (const basePath of basePaths) {
-    //       const [krContent, enContent] = await loadPairForBase(files, basePath);
-          
-    //       const scope = selectedPreset.scope || (selectedPreset.defaults && selectedPreset.defaults.scope) || 'Auto';
-    //       const globs = selectedPreset.globs || (selectedPreset.defaults && selectedPreset.defaults.globs) || '**/*';
-          
-    //       let desc = selectedPreset.desc || (selectedPreset.defaults && selectedPreset.defaults.desc) || '';
-    //       if (!desc) {
-    //         const baseName = basePath.split('/').pop().replace(/\.md$/,'').replace(/[-_]/g,' ');
-    //         const prefix = (selectedPreset.defaults && selectedPreset.defaults.descPrefix) ? selectedPreset.defaults.descPrefix : '';
-    //         desc = (prefix + baseName).replace(/^\w/, c => c.toUpperCase());
-    //       }
-          
-    //       await addRule({
-    //         desc,
-    //         scope,
-    //         globs,
-    //         bodyKr: krContent || '',
-    //         bodyEn: enContent || '',
-    //         basePath: basePath
-    //       });
-    //     }
-        
-    //     console.log(`프리셋 '${selectedPreset.name}' 로딩 완료:`, basePaths.length, '개 규칙');
-    //   } catch (e) {
-    //     console.error('프리셋 로딩 실패:', e);
-    //     alert('프리셋을 불러오는데 실패했습니다.');
-    //   }
-    // };
+        // 각 base에 대해 KR/EN 로드 → 카드 생성
+        for (const basePath of basePaths) {
+          const [krContent, enContent] = await loadPairForBase(files, basePath);
 
-    // document.getElementById('loadSelectedPreset').onclick = loadPresetFromSelector;
+          const scope = selectedPreset.scope || (selectedPreset.defaults && selectedPreset.defaults.scope) || 'Auto';
+          const globs = selectedPreset.globs || (selectedPreset.defaults && selectedPreset.defaults.globs) || '**/*';
 
-    // 🔄 셀렉트가 변경될 때도 자동 로드
+          let desc = selectedPreset.desc || (selectedPreset.defaults && selectedPreset.defaults.desc) || '';
+          if (!desc) {
+            const baseName = basePath.split('/').pop().replace(/\.md$/,'').replace(/[-_]/g,' ');
+            const prefix = (selectedPreset.defaults && selectedPreset.defaults.descPrefix) ? selectedPreset.defaults.descPrefix : '';
+            desc = (prefix + baseName).replace(/^\w/, c => c.toUpperCase());
+          }
+
+          await addRule({
+            desc,
+            scope,
+            globs,
+            bodyKr: krContent || '',
+            bodyEn: enContent || '',
+            basePath: basePath
+          });
+        }
+
+        console.log(`프리셋 '${selectedPreset.name}' 로딩 완료:`, basePaths.length, '개 규칙');
+      } catch (e) {
+        console.error('프리셋 로딩 실패:', e);
+        alert('프리셋을 불러오는데 실패했습니다.');
+      }
+    }
+
     document.getElementById('presetSelector').addEventListener('change', loadPresetFromSelector);
 
     // Toolbar actions
