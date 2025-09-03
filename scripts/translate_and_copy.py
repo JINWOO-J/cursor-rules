@@ -1,0 +1,243 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+KR 원문을 기반으로 web/cursor-rules/** 아래에만 산출물을 생성합니다.
+규칙:
+- *.kr.md  : web/.../*.kr.md (복사) + web/.../*.en.md (번역 생성)
+- *.en.md  : web/.../*.en.md (복사)                           # 원문이 영어인 경우
+- *.md     : web/.../*.kr.md (이름 변환) + web/.../*.en.md (번역 생성)
+- EN 산출물에는 source_sha(front matter)로 재번역 방지
+- glossary.kr-en.json이 있으면 용어를 강제 적용
+"""
+
+import os
+import re
+import json
+import sys
+import shutil
+import hashlib
+from pathlib import Path
+import yaml
+import google.generativeai as genai
+
+# -------- Paths & Config --------
+ROOT = Path(__file__).resolve().parents[1]  # repo root
+SRC_DIRS = [
+    "cursor-rules/common/stacks",
+    "cursor-rules/common",
+    "cursor-rules/project",
+    "cursor-rules/generated",
+    "cursor-rules",
+]
+SRC_ROOTS = [ROOT / d for d in SRC_DIRS]
+OUT_ROOT = ROOT / "web" / "cursor-rules"
+
+GLOSSARY_PATH = ROOT / "cursor-rules" / "glossary.kr-en.json"  # optional
+API_KEY = os.environ.get("GEMINI_API_KEY")
+MODEL = "gemini-1.5-flash"  # 필요시 pro로 변경
+
+if not API_KEY:
+    print("GEMINI_API_KEY is not set", file=sys.stderr)
+    sys.exit(1)
+
+genai.configure(api_key=API_KEY)
+model = genai.GenerativeModel(MODEL)
+
+FRONT_MATTER_RE = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
+
+
+# -------- Utils --------
+def sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+def split_front_matter(md: str):
+    m = FRONT_MATTER_RE.match(md)
+    if m:
+        fm_text = m.group(1)
+        body = md[m.end():]
+        fm = yaml.safe_load(fm_text) or {}
+    else:
+        fm, body = {}, md
+    return fm, body
+
+def build_front_matter(fm: dict) -> str:
+    return "---\n" + yaml.safe_dump(fm, sort_keys=False, allow_unicode=True) + "---\n"
+
+def load_glossary() -> dict:
+    if GLOSSARY_PATH.exists():
+        try:
+            return json.loads(GLOSSARY_PATH.read_text(encoding="utf-8"))
+        except Exception as e:
+            print(f"[warn] failed to parse glossary: {e}", file=sys.stderr)
+    return {}
+
+GLOSSARY = load_glossary()
+
+
+# -------- Prompt builders --------
+PROMPT_SYSTEM = """You are a professional technical translator (Korean → English).
+Translate the Korean text to clear, concise, developer-friendly English.
+Absolutely preserve:
+- Markdown structure, headings, tables, lists, links, images
+- Code blocks and inline code (do NOT translate code)
+- Front matter keys and values except `title`/`description` which should be translated
+- Anchor links and IDs
+Terminology rules:
+- Use the provided glossary strictly when applicable.
+- Keep product/library names as-is.
+Formatting:
+- Keep line breaks and spacing where meaningful; wrap lines naturally otherwise.
+- Do not add explanations or commentary.
+"""
+
+def build_user_prompt(kr_body: str, glossary: dict) -> str:
+    glossary_lines = "\n".join([f"- {k} → {v}" for k, v in glossary.items()])
+    return f"""Glossary (KR→EN):
+{glossary_lines if glossary_lines else "- (none)"}
+
+Task:
+Translate the following Markdown content from Korean to English.
+
+<CONTENT>
+{kr_body}
+</CONTENT>
+"""
+
+def translate_inline(text: str) -> str:
+    if not text:
+        return text
+    glossary_lines = "\n".join([f"- {k} → {v}" for k, v in GLOSSARY.items()]) or "(none)"
+    r = model.generate_content([
+        PROMPT_SYSTEM,
+        f"Glossary:\n{glossary_lines}\n\nTranslate this short text (title/description) to English:\n\n{text}"
+    ])
+    return (r.text or "").strip()
+
+
+# -------- Core translation --------
+def translate_markdown(kr_md: str) -> str:
+    fm, body = split_front_matter(kr_md)
+    src_sha = sha256_text(kr_md)
+
+    # front matter 업데이트 (본문 번역 별도)
+    fm_en = dict(fm)
+    fm_en["lang"] = "en"
+    fm_en["source_lang"] = fm.get("lang", "kr")
+    fm_en["source_sha"] = src_sha
+
+    # 제목/설명만 번역
+    if "title" in fm_en:
+        fm_en["title"] = translate_inline(fm_en["title"])
+    if "description" in fm_en:
+        fm_en["description"] = translate_inline(fm_en["description"])
+
+    # 본문 번역
+    user_prompt = build_user_prompt(body, GLOSSARY)
+    resp = model.generate_content([PROMPT_SYSTEM, user_prompt])
+    en_body = resp.text or ""
+
+    return build_front_matter(fm_en) + en_body
+
+
+# -------- Path mapping (to OUT_ROOT) --------
+def out_path_for(src: Path, lang_suffix: str | None, rename_plain_to_kr: bool) -> Path:
+    """
+    src: absolute path under one of SRC_ROOTS
+    lang_suffix: None keeps suffix; "en" forces .en.md; "" with rename_plain_to_kr=True rewrites *.md → *.kr.md
+    """
+    # find relative path beneath its SRC_ROOT
+    rel = None
+    for base in SRC_ROOTS:
+        try:
+            rel = src.relative_to(base)
+            break
+        except ValueError:
+            continue
+    if rel is None:
+        # fallback to path under first root
+        rel = src.relative_to(SRC_ROOTS[0])
+
+    # *.md(plain) → *.kr.md 로 바꾸는 경우
+    name = rel.name
+    if rename_plain_to_kr and name.endswith(".md") and not name.endswith(".kr.md") and not name.endswith(".en.md"):
+        rel = rel.with_name(rel.stem + ".kr.md")
+
+    dest = OUT_ROOT / rel
+
+    # lang_suffix 강제 (.kr.md → .en.md 등)
+    if lang_suffix:
+        if dest.name.endswith(".kr.md"):
+            dest = dest.with_name(dest.name.replace(".kr.md", f".{lang_suffix}.md"))
+        elif dest.name.endswith(".md") and not dest.name.endswith(".en.md"):
+            dest = dest.with_name(dest.stem + f".{lang_suffix}.md")
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    return dest
+
+
+# -------- Processing --------
+def process_file(src: Path):
+    """
+    - *.kr.md      → copy KR,   translate to EN
+    - *.en.md      → copy EN
+    - *.md (plain) → write KR (renamed), translate to EN
+    """
+    text = src.read_text(encoding="utf-8")
+    fm, body = split_front_matter(text)
+    src_sha = sha256_text(text)
+
+    is_en = src.name.endswith(".en.md")
+    is_kr = src.name.endswith(".kr.md")
+    is_plain = (src.suffix == ".md" and not is_en and not is_kr)
+
+    # 1) KR 산출
+    if is_kr:
+        kr_out = out_path_for(src, lang_suffix=None, rename_plain_to_kr=False)
+        shutil.copy2(src, kr_out)
+        print(f"[copy] KR  → {kr_out}")
+    elif is_plain:
+        kr_out = out_path_for(src, lang_suffix=None, rename_plain_to_kr=True)
+        # plain → kr로 저장하면서 lang 보강
+        fm2 = dict(fm)
+        if fm2.get("lang") != "kr":
+            fm2["lang"] = "kr"
+        kr_text = build_front_matter(fm2) + body if fm else text
+        kr_out.write_text(kr_text, encoding="utf-8")
+        print(f"[write] KR  → {kr_out}")
+
+    # 2) EN 산출
+    if is_en:
+        en_out = out_path_for(src, lang_suffix=None, rename_plain_to_kr=False)
+        shutil.copy2(src, en_out)
+        print(f"[copy] EN  → {en_out}")
+    else:
+        # kr 또는 plain 기준으로 EN 생성
+        en_out = out_path_for(src, lang_suffix="en", rename_plain_to_kr=is_plain)
+        # 재번역 방지: 기존 EN의 source_sha 확인
+        if en_out.exists():
+            exist_fm, _ = split_front_matter(en_out.read_text(encoding="utf-8"))
+            if exist_fm.get("source_sha") == src_sha:
+                print(f"[skip] EN up-to-date: {en_out}")
+                return
+        en_text = translate_markdown(text)
+        en_out.write_text(en_text, encoding="utf-8")
+        print(f"[write] EN  → {en_out}")
+
+
+def main():
+    # clean output root for deterministic build
+    if OUT_ROOT.exists():
+        shutil.rmtree(OUT_ROOT)
+
+    for base in SRC_ROOTS:
+        if not base.exists():
+            continue
+        for path in base.rglob("*.md"):
+            # 소스 트리 안의 *.md만 처리 (산출물 트리 제외)
+            if "web/cursor-rules" in str(path):
+                continue
+            process_file(path)
+
+if __name__ == "__main__":
+    sys.exit(main())

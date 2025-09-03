@@ -1,0 +1,76 @@
+name: Build & Translate (KR→EN) and Publish Web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cursor-rules/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: web-gen
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 레포 체크아웃
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+    
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade google-generativeai pyyaml
+
+    
+      - name: Translate KR → EN & stage into web/cursor-rules
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python scripts/translate_and_copy.py
+
+    
+      - name: Generate files.json & version-info.json
+        run: |
+          bash scripts/generate_web.sh
+
+    
+      - name: Commit & push web/ changes
+        run: |
+          if [ -n "$(git status --porcelain web/)" ]; then
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+            git add web/
+            git commit -m "[skip ci] docs(web): auto-update translated files and indexes"
+            git pull --rebase || true
+            git push
+          else
+            echo "No changes in web/"
+          fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+#   deploy:
+#     needs: build
+#     runs-on: ubuntu-latest
+#     environment:
+#       name: github-pages
+#     steps:
+#       - id: deployment
+#         uses: actions/deploy-pages@v4
