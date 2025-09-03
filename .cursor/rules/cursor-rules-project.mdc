@@ -1,0 +1,107 @@
+---
+alwaysApply: true
+description: "Cursor Rules 프로젝트 전용 개발 가이드라인"
+---
+
+# Cursor Rules 프로젝트 개발 가이드
+
+## 프로젝트 구조 이해
+
+이 프로젝트는 Cursor Rules 관리 및 번역 자동화 시스템입니다:
+
+- `cursor-rules/`: 소스 규칙 파일들 (KR 원본)
+- `web/`: 동적 빌드 결과물 (커밋하지 않음)
+- `scripts/`: Python 번역 스크립트 + 웹 생성 스크립트
+- `.cursor/rules/`: 이 프로젝트의 Cursor Rules
+
+## 핵심 원칙
+
+### 파일 구조 및 명명
+- 규칙 파일: `cursor-rules/` 하위에 `.md` 형식으로 작성
+- 번역 파일: `*.kr.md`, `*.en.md` 접미사 사용
+- 웹 빌드: `web/` 디렉토리는 자동 생성, 직접 수정 금지
+
+### 번역 시스템
+- Google Gemini AI 사용 (`scripts/translate_and_copy.py`)
+- SHA256 해시로 재번역 방지
+- `glossary.kr-en.json`으로 용어 통일
+
+### 웹 Builder
+- GitHub Pages에서 `/cursor-rules/` 경로로 서빙
+- 경로 해결: `files.json`의 `cursor-rules/` 접두사 고려
+- 프리셋 시스템: `presets.json`으로 개발환경별 규칙 조합
+
+## 개발 워크플로우
+
+### 규칙 추가/수정
+```bash
+# 1. 규칙 파일 편집
+vim cursor-rules/common/new-rule.md
+
+# 2. 번역 및 웹 빌드 (로컬 테스트)
+python scripts/translate_and_copy.py
+bash scripts/generate_web.sh
+
+# 3. GitHub Pages 테스트
+node test-github-pages.js  # 포트 3000에서 테스트
+```
+
+### 경로 문제 디버깅
+- GitHub Pages는 `web/` 디렉토리가 루트가 됨
+- `files.json` 경로: `cursor-rules/common/foo.md`
+- 실제 요청: `/cursor-rules/cursor-rules/common/foo.md`
+- `urlFor()` 함수에서 경로 정규화 처리
+
+## 코딩 스타일
+
+### Python (번역 스크립트)
+- Type hints 필수: `def func(src: Path) -> str:`
+- Pathlib 사용: `Path` 객체로 경로 처리
+- Front matter: YAML 파싱으로 메타데이터 처리
+- 에러 처리: 번역 실패 시 graceful degradation
+
+### JavaScript (웹 Builder)
+- ES6+ 문법 사용
+- `async/await` 패턴으로 파일 로딩
+- Console 로그로 경로 디버깅 지원
+- GitHub Pages 환경 감지: `window.location.pathname.includes('/cursor-rules/')`
+
+### CSS
+- CSS 변수 사용: `var(--gap)`, `var(--radius)`
+- Flexbox 기반 레이아웃
+- 다크 테마 기본 (`#0b1220` 배경)
+
+## 주의사항
+
+### 🚫 하지 말 것
+- `web/` 디렉토리에 직접 파일 생성/수정
+- GitHub Actions 시크릿 하드코딩
+- 절대 경로 사용 (상대 경로 권장)
+
+### ✅ 권장사항
+- 로컬 테스트 후 배포
+- Console 로그로 디버깅 정보 제공
+- 경로 문제 시 `test-github-pages.js` 활용
+- 마크다운 스타일 가이드 준수
+
+## 디버깅 팁
+
+### 경로 문제
+```javascript
+// 브라우저 Console에서
+console.log('Current path:', window.location.pathname);
+console.log('BASE_PATH:', BASE_PATH);
+console.log('urlFor test:', urlFor({path: 'cursor-rules/common/test.md'}));
+```
+
+### 번역 문제
+```bash
+# 특정 파일만 번역 테스트
+python -c "
+import scripts.translate_and_copy as t
+result = t.translate_markdown('# 테스트')
+print(result)
+"
+```
+
+이 프로젝트는 복잡한 다국어 번역 + 웹 빌드 시스템이므로, 경로와 빌드 프로세스를 정확히 이해하고 개발하세요.

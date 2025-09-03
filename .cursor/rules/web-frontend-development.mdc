@@ -1,0 +1,220 @@
+---
+globs: web/*.html,web/*.js,web/*.css,*.html,*.js
+description: "웹 프론트엔드 개발 가이드 (Builder UI)"
+---
+
+# 웹 프론트엔드 개발 가이드
+
+## GitHub Pages 경로 처리
+
+### 핵심 문제: 경로 중복
+```javascript
+// 문제: files.json 경로 "cursor-rules/foo.md"
+// GitHub Pages: /cursor-rules/ 하위에서 서빙
+// 결과: /cursor-rules/cursor-rules/foo.md (중복!)
+
+// 해결책: GitHub Pages 감지 시 경로 정규화
+function urlFor(entry) {
+  let path = entry.path;
+  if (window.location.pathname.includes('/cursor-rules/')) {
+    // GitHub Pages에서는 cursor-rules/ 접두사 그대로 사용
+    console.log(`GitHub Pages: ${path}`);
+  }
+  return BASE_PATH + path;
+}
+```
+
+### BASE_PATH 동적 계산
+```javascript
+function getBasePath() {
+  const path = window.location.pathname;
+  if (path === '/' || path.endsWith('/index.html')) {
+    return './';  // 로컬 개발
+  }
+  if (path.includes('/cursor-rules/')) {
+    return './';  // GitHub Pages 프로젝트 사이트
+  }
+  return './';
+}
+```
+
+## 검색 가능한 Select Box
+
+### 이벤트 전파 제어
+```javascript
+// 검색 필드 클릭 시 select-box 닫힘 방지
+searchInput.addEventListener('click', (e) => {
+  e.stopPropagation();  // 핵심!
+});
+
+// 키보드 지원
+searchInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    // 첫 번째 보이는 항목 선택
+    const visibleItems = itemsDiv.querySelectorAll('div:not(.select-search)')
+      .filter(item => item.style.display !== 'none');
+    if (visibleItems.length > 0) visibleItems[0].click();
+  }
+});
+```
+
+### 자동 포커스 및 초기화
+```javascript
+selectedDiv.addEventListener('click', (e) => {
+  // select-box 열릴 때 검색 필드 자동 포커스
+  if (!itemsDiv.classList.contains('select-hide')) {
+    setTimeout(() => {
+      searchInput.value = '';  // 검색어 초기화
+      searchInput.focus();
+      // 모든 항목 다시 표시
+      const items = itemsDiv.querySelectorAll('div:not(.select-search)');
+      items.forEach(item => item.style.display = "");
+    }, 100);
+  }
+});
+```
+
+## 파일 자동 로딩 시스템
+
+### 선택 시 자동 로딩
+```javascript
+item.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  selectedDiv.innerHTML = basePath;
+  selectElement.value = basePath;
+  closeAllSelect();
+  
+  // 파일 선택 시 자동으로 내용 로드
+  await loadFileContent(ruleCard);
+});
+```
+
+### 이중 언어 로딩
+```javascript
+// KR/EN 파일 동시 로딩
+const [krContent, enContent] = await Promise.all([
+  loadSingleFile(krEntry),
+  loadSingleFile(enEntry)
+]);
+
+// 각각의 텍스트 영역에 설정
+if (krContent) ruleCard.querySelector('.f-body-kr').value = krContent;
+if (enContent) ruleCard.querySelector('.f-body-en').value = enContent;
+```
+
+## 프리셋 시스템
+
+### 프리셋 구조 처리
+```javascript
+// type: "base" - 단일 파일
+if (preset.type === 'base') {
+  const basePaths = [preset.base];
+}
+
+// type: "query" - 패턴 매칭
+if (preset.type === 'query') {
+  const matched = bases.filter(basePath => {
+    const forms = candidateForms(basePath);
+    return includeGlobs.some(glob => globToRegExp(glob).test(forms[0]));
+  });
+}
+```
+
+### 카테고리별 UI 구성
+```javascript
+// 카테고리별 optgroup 생성
+Object.keys(groupedPresets).forEach(categoryId => {
+  const category = presetData.categories[categoryId];
+  const optgroup = document.createElement('optgroup');
+  optgroup.label = category ? category.name : categoryId;
+  
+  groupedPresets[categoryId].forEach(preset => {
+    const option = document.createElement('option');
+    option.value = preset.id;
+    option.textContent = preset.name;
+    optgroup.appendChild(option);
+  });
+});
+```
+
+## CSS 스타일링
+
+### 다크 테마 일관성
+```css
+:root { 
+  --gap: 12px; 
+  --radius: 12px; 
+}
+
+body { 
+  background: #0b1220; 
+  color: #e8eefb; 
+}
+
+.card { 
+  background: #101a30; 
+  border: 1px solid #22365c; 
+}
+
+input, select, textarea {
+  background: #0c1527;
+  color: #e8eefb;
+  border: 1px solid #29406c;
+}
+```
+
+### 반응형 레이아웃
+```css
+.row { 
+  display: flex; 
+  flex-wrap: wrap; 
+  gap: var(--gap); 
+  align-items: flex-end;  /* 라벨 있는 필드와 버튼 정렬 */
+}
+
+.fields { 
+  display: grid; 
+  gap: var(--gap); 
+  grid-template-columns: repeat(2, 1fr); 
+}
+```
+
+## 디버깅 및 테스트
+
+### 로컬 GitHub Pages 테스트
+```bash
+# 테스트 서버 실행
+node test-github-pages.js
+
+# 브라우저에서 확인
+# http://localhost:3000/cursor-rules/
+```
+
+### Console 디버깅
+```javascript
+// 경로 문제 디버깅
+console.log('Current path:', window.location.pathname);
+console.log('Is GitHub Pages:', window.location.pathname.includes('/cursor-rules/'));
+console.log('BASE_PATH:', BASE_PATH);
+
+// 파일 로딩 확인
+console.log('urlFor result:', urlFor(entry));
+console.log('Fetch URL:', finalUrl);
+```
+
+## 성능 최적화
+
+### 캐시 방지
+```javascript
+fetch(BASE_PATH + 'files.json', { cache: 'no-store' })
+```
+
+### 병렬 로딩
+```javascript
+const [presetData, files] = await Promise.all([
+  fetchPresets(),
+  fetchFilesJson()
+]);
+```
+
+이 웹 Builder는 복잡한 경로 처리와 파일 로딩 로직을 포함하므로, GitHub Pages 환경을 정확히 고려하여 개발하세요.

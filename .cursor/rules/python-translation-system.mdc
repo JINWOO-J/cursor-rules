@@ -1,0 +1,133 @@
+---
+globs: scripts/*.py,**/*.py
+description: "Python 번역 시스템 개발 가이드"
+---
+
+# Python 번역 시스템 개발 가이드
+
+## Google Gemini AI 번역 시스템
+
+### 모델 설정
+```python
+# 모델 선택 가이드
+MODEL = "gemini-1.5-flash-8b"     # 빠르고 경제적
+# MODEL = "gemini-2.0-flash"       # 더 높은 품질
+# MODEL = "gemini-1.5-pro"         # 최고 품질 (비용 높음)
+```
+
+### 번역 프롬프트 패턴
+- System prompt: 번역 규칙과 제약사항 명시
+- User prompt: 용어집 + 번역할 콘텐츠
+- 마크다운 구조 보존 필수
+- Front matter 처리: `title`/`description`만 번역
+
+### 에러 처리 패턴
+```python
+try:
+    response = model.generate_content([system_prompt, user_prompt])
+    return response.text or ""
+except Exception as e:
+    print(f"[error] Translation failed: {e}", file=sys.stderr)
+    return original_text  # 원본 반환으로 graceful degradation
+```
+
+## 파일 처리 로직
+
+### 경로 매핑 시스템
+```python
+def out_path_for(src: Path, lang_suffix: str | None, rename_plain_to_kr: bool) -> Path:
+    # cursor-rules/ 루트 기준 상대경로 계산
+    cursor_rules_root = ROOT / "cursor-rules"
+    rel = src.relative_to(cursor_rules_root)
+    
+    # 디렉토리 구조 보존이 핵심!
+```
+
+### 파일 타입별 처리
+- `*.kr.md`: 복사 + EN 번역 생성
+- `*.en.md`: 복사만 (번역 건너뜀)
+- `*.md`: KR로 변환 + EN 번역 생성
+
+### 재번역 방지
+```python
+src_sha = sha256_text(original_text)
+# EN 파일의 front matter에 source_sha 저장
+# 다음 빌드 시 SHA 비교로 불필요한 재번역 방지
+```
+
+## YAML Front Matter 처리
+
+### 안전한 YAML 처리
+```python
+def build_front_matter(fm: dict) -> str:
+    yaml_content = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True)
+    # None이나 bytes 반환 가능하므로 타입 체크 필수
+    if yaml_content is None:
+        yaml_content = ""
+    elif isinstance(yaml_content, bytes):
+        yaml_content = yaml_content.decode('utf-8')
+    return "---\n" + yaml_content + "---\n"
+```
+
+### Front Matter 번역 규칙
+- `lang`: 자동 설정 (kr/en)
+- `source_lang`: 원본 언어 보존
+- `source_sha`: 재번역 방지용 해시
+- `title`, `description`: 번역 대상
+- 나머지 필드: 원본 유지
+
+## 용어집 시스템
+
+### 용어집 구조
+```json
+{
+  "시크릿": "secret",
+  "토큰": "token",
+  "커밋": "commit"
+}
+```
+
+### 용어 강제 적용
+- 번역 전 용어집을 프롬프트에 포함
+- 일관된 기술 용어 사용 보장
+- 브랜드명/제품명은 번역하지 않음
+
+## 성능 최적화
+
+### 중복 처리 방지
+```python
+processed_files = set()
+if path.resolve() in processed_files:
+    continue
+processed_files.add(path.resolve())
+```
+
+### 디렉토리 구조 보존
+- 기존: 평탄화되어 `web/cursor-rules/` 루트에 모든 파일
+- 개선: 원본 구조 유지 `web/cursor-rules/common/stacks/`
+
+## 디버깅 팁
+
+### 번역 품질 확인
+```bash
+# 특정 파일 번역 테스트
+python -c "
+from scripts.translate_and_copy import translate_markdown
+result = translate_markdown(open('cursor-rules/common/test.md').read())
+print(result)
+"
+```
+
+### 경로 매핑 확인
+```bash
+# 출력 경로 확인
+python -c "
+from scripts.translate_and_copy import out_path_for
+from pathlib import Path
+src = Path('cursor-rules/common/stacks/node-react.md')
+print('KR out:', out_path_for(src, None, True))
+print('EN out:', out_path_for(src, 'en', True))
+"
+```
+
+이 번역 시스템은 대량의 기술 문서를 일관성 있게 번역하는 것이 목표입니다. 성능과 품질의 균형을 고려하여 개발하세요.

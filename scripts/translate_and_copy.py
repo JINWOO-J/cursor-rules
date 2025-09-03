@@ -17,6 +17,8 @@ import json
 import sys
 import shutil
 import hashlib
+import subprocess
+from datetime import datetime
 from pathlib import Path
 import yaml
 import google.generativeai as genai
@@ -55,6 +57,53 @@ FRONT_MATTER_RE = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
 # -------- Utils --------
 def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+def get_git_file_info(file_path: Path) -> dict:
+    """파일의 Git 커밋 정보를 가져옵니다."""
+    try:
+        cmd = [
+            'git', 'log', '-1', '--format=%H|%an|%ae|%ci|%s', 
+            '--', str(file_path)
+        ]
+        result = subprocess.run(
+            cmd, 
+            capture_output=True, 
+            text=True, 
+            cwd=ROOT,
+            check=True
+        )
+        
+        if result.stdout.strip():
+            commit_hash, author_name, author_email, commit_date, commit_message = result.stdout.strip().split('|', 4)
+            
+
+            if ' +' in commit_date:
+                commit_date_clean = commit_date.rsplit(' +', 1)[0]
+            elif ' -' in commit_date:
+                commit_date_clean = commit_date.rsplit(' -', 1)[0]
+            else:
+                commit_date_clean = commit_date
+            
+            return {
+                'commit_hash': commit_hash[:7],  # 짧은 해시
+                'commit_hash_full': commit_hash,
+                'author_name': author_name,
+                'author_email': author_email,
+                'commit_date': commit_date_clean,  # 원본 형식 유지
+                'commit_message': commit_message.strip()
+            }
+    except (subprocess.CalledProcessError, ValueError, IndexError) as e:
+        print(f"[warn] Git info extraction failed for {file_path}: {e}", file=sys.stderr)
+    
+    # Git 정보 추출 실패 시 기본값 반환
+    return {
+        'commit_hash': 'unknown',
+        'commit_hash_full': 'unknown',
+        'author_name': 'unknown',
+        'author_email': 'unknown',
+        'commit_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'commit_message': 'unknown'
+    }
 
 def split_front_matter(md: str):
     m = FRONT_MATTER_RE.match(md)
@@ -127,15 +176,24 @@ def translate_inline(text: str) -> str:
 
 
 # -------- Core translation --------
-def translate_markdown(kr_md: str) -> str:
+def translate_markdown(kr_md: str, src_file: Path) -> str:
     fm, body = split_front_matter(kr_md)
     src_sha = sha256_text(kr_md)
+
+    # Git 정보 추출
+    git_info = get_git_file_info(src_file)
 
     # front matter 업데이트 (본문 번역 별도)
     fm_en = dict(fm)
     fm_en["lang"] = "en"
     fm_en["source_lang"] = fm.get("lang", "kr")
     fm_en["source_sha"] = src_sha
+    
+    # Git 정보 추가
+    fm_en["source_commit"] = git_info["commit_hash"]
+    fm_en["source_author"] = git_info["author_name"]
+    fm_en["source_date"] = git_info["commit_date"]
+    fm_en["translated_at"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     # 제목/설명만 번역
     if "title" in fm_en:
@@ -201,6 +259,9 @@ def process_file(src: Path):
     fm, body = split_front_matter(text)
     src_sha = sha256_text(text)
 
+    # Git 정보 추출 (모든 파일에 공통 적용)
+    git_info = get_git_file_info(src)
+
     is_en = src.name.endswith(".en.md")
     is_kr = src.name.endswith(".kr.md")
     is_plain = (src.suffix == ".md" and not is_en and not is_kr)
@@ -208,14 +269,30 @@ def process_file(src: Path):
     # 1) KR 산출
     if is_kr:
         kr_out = out_path_for(src, lang_suffix=None, rename_plain_to_kr=False)
-        shutil.copy2(src, kr_out)
-        print(f"[copy] KR  → {kr_out}")
+        # 기존 KR 파일에도 Git 정보 추가
+        fm_kr = dict(fm)
+        if "source_commit" not in fm_kr:  # 이미 Git 정보가 없는 경우만 추가
+            fm_kr["source_commit"] = git_info["commit_hash"]
+            fm_kr["source_author"] = git_info["author_name"] 
+            fm_kr["source_date"] = git_info["commit_date"]
+            kr_text = build_front_matter(fm_kr) + body
+            kr_out.write_text(kr_text, encoding="utf-8")
+            print(f"[write] KR (with git info) → {kr_out}")
+        else:
+            shutil.copy2(src, kr_out)
+            print(f"[copy] KR  → {kr_out}")
     elif is_plain:
         kr_out = out_path_for(src, lang_suffix=None, rename_plain_to_kr=True)
-        # plain → kr로 저장하면서 lang 보강
+        # plain → kr로 저장하면서 lang + Git 정보 보강
         fm2 = dict(fm)
         if fm2.get("lang") != "kr":
             fm2["lang"] = "kr"
+        
+        # Git 정보 추가
+        fm2["source_commit"] = git_info["commit_hash"]
+        fm2["source_author"] = git_info["author_name"]
+        fm2["source_date"] = git_info["commit_date"]
+        
         kr_text = build_front_matter(fm2) + body if fm else text
         kr_out.write_text(kr_text, encoding="utf-8")
         print(f"[write] KR  → {kr_out}")
@@ -234,7 +311,7 @@ def process_file(src: Path):
             if exist_fm.get("source_sha") == src_sha:
                 print(f"[skip] EN up-to-date: {en_out}")
                 return
-        en_text = translate_markdown(text)
+        en_text = translate_markdown(text, src)  # src 파일 경로 전달
         en_out.write_text(en_text, encoding="utf-8")
         print(f"[write] EN  → {en_out}")
 
