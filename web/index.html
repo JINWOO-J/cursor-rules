@@ -470,6 +470,19 @@
       // 검색 가능한 selectbox 초기화
       initSearchableSelectForRule(node);
       
+      // basePath가 있으면 파일명 select box를 자동으로 설정
+      if (prefill && prefill.basePath) {
+        const selectDiv = node.querySelector('.searchable-select');
+        const selectElement = selectDiv.querySelector('select');
+        const selectedDiv = selectDiv.querySelector('.select-selected');
+        
+        // basePath 값으로 select 설정
+        selectElement.value = prefill.basePath;
+        selectedDiv.innerHTML = prefill.basePath;
+        
+        console.log(`Set file selection to: ${prefill.basePath}`);
+      }
+      
       node.addEventListener('click', async (e) => {
         const action = e.target.dataset.action;
         if (!action) return;
@@ -702,7 +715,6 @@
       const excOk = exclude.every(g => !globToRegExp(g).test(path));
       return incOk && excOk;
     }
-
     // 이미 있으나, 여기 다시 명시 (bases: [{base,kr,en,plain}])
     function buildBaseIndex(files){
       const map = new Map();
@@ -757,27 +769,50 @@
     }
 
     async function expandPresetToBases(preset, bases){
-      // preset.type === 'base'
+      // bases: [{ base, kr, en, plain }], base 예: 'cursor-rules/common/stacks/node-react.md'
+      const include = Array.isArray(preset.include) ? preset.include : (preset.type === 'query' ? ['**/*.md'] : []);
+      const exclude = Array.isArray(preset.exclude) ? preset.exclude : [];
+
+      const matches = (basePath) => {
+        const rel = basePath.replace(/^cursor-rules\//, ''); // 상대경로
+        const incOk = (
+          include.length === 0 ||
+          include.some(g => matchGlobs(basePath, [g], []) || matchGlobs(rel, [g], []))
+        );
+        const excOk = (
+          exclude.length === 0 ||
+          exclude.every(g => !matchGlobs(basePath, [g], []) && !matchGlobs(rel, [g], []))
+        );
+        return incOk && excOk;
+      };
+
+      // type: 'base'
       if (preset.type === 'base' && typeof preset.base === 'string'){
-        const basePath = preset.base.replace(/\.kr\.md$|\.en\.md$/i, '.md');
-        const found = bases.find(b => b.base === basePath);
-        return found ? [found.base] : [];
+        const wanted = preset.base.replace(/\.kr\.md$|\.en\.md$/i, '.md');
+        const abs = wanted.startsWith('cursor-rules/') ? wanted : ('cursor-rules/' + wanted);
+        const found = bases.find(b => b.base === abs);
+        const list = found ? [found.base] : [];
+        console.debug('[preset:base]', preset.id, '→', list);
+        return list;
       }
 
-      // preset.type === 'query'
+      // type: 'query'
       if (preset.type === 'query'){
-        const include = Array.isArray(preset.include) ? preset.include : ['**/*.md'];
-        const exclude = Array.isArray(preset.exclude) ? preset.exclude : [];
-        return bases
+        const list = bases
           .map(b => b.base)
-          .filter(base => matchGlobs(base, include, exclude));
+          .filter(basePath => matches(basePath));
+        console.debug('[preset:query]', preset.id, 'matched', list.length);
+        return list;
       }
 
-      // fallback: 무시
       return [];
     }
 
+    console.log('----loadPresets');
+    console.debug('----DEBUG --- loadPresets');
+
     document.getElementById('loadPresets').onclick = async () => {
+      console.log('IN--- loadPresets'); // 이 로그가 보여야 정상
       try {
         // 1) 프리셋 & files.json
         const [presets, files] = await Promise.all([fetchPresets(), fetchFilesJson()]);
@@ -786,7 +821,7 @@
         // 2) 전체 초기화
         $rules.innerHTML = '';
 
-        // 3) 각 프리셋을 실제 base 목록으로 전개
+        // 3) 프리셋을 base 목록으로 전개
         for (const p of presets) {
           const basePaths = await expandPresetToBases(p, basesIndex);
           if (basePaths.length === 0) continue;
@@ -795,7 +830,6 @@
           for (const basePath of basePaths) {
             const [krContent, enContent] = await loadPairForBase(files, basePath);
 
-            // desc/scope/globs 결정 (preset 개별 값 또는 defaults)
             const scope = p.scope || (p.defaults && p.defaults.scope) || 'Auto';
             const globs = p.globs || (p.defaults && p.defaults.globs) || '**/*';
 
@@ -811,7 +845,8 @@
               scope,
               globs,
               bodyKr: krContent || '',
-              bodyEn: enContent || ''
+              bodyEn: enContent || '',
+              basePath: basePath  // 프리셋에서 사용된 파일 경로 추가
             });
           }
         }
@@ -911,21 +946,21 @@
     //   });
     // };
 
-    document.getElementById('loadPresets').onclick = async () => {
-      try {
-        const presets = await fetchPresets(); // 기본 로컬 JSON
-        $rules.innerHTML = '';
-        for (const p of presets) {
-          await addRule({
-            desc: p.desc, scope: p.scope, globs: p.globs,
-            bodyKr: p.bodyKr || '', bodyEn: p.bodyEn || ''
-          });
-        }
-      } catch (e) {
-        console.error(e);
-        alert('프리셋을 불러오지 못했습니다.');
-      }
-    };
+    // document.getElementById('loadPresets').onclick = async () => {
+    //   try {
+    //     const presets = await fetchPresets(); // 기본 로컬 JSON
+    //     $rules.innerHTML = '';
+    //     for (const p of presets) {
+    //       await addRule({
+    //         desc: p.desc, scope: p.scope, globs: p.globs,
+    //         bodyKr: p.bodyKr || '', bodyEn: p.bodyEn || ''
+    //       });
+    //     }
+    //   } catch (e) {
+    //     console.error(e);
+    //     alert('프리셋을 불러오지 못했습니다.');
+    //   }
+    // };
 
 
     // Start empty

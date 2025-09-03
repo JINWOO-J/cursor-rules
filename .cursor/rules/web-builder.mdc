@@ -1,0 +1,351 @@
+---
+description: "Web Builder와 번역 프로세스 가이드 - 전체 흐름과 구현 상세"
+alwaysApply: true
+---
+# Cursor Rules — Builder & Web 산출 가이드
+
+이 문서는 지금까지 정리한 **번역 → 웹 산출 → 오프라인 Builder(UI)** 흐름을 한 번에 설명합니다.  
+(마크다운/코드블록이 깨지지 않도록 안전한 형식으로 정리)
+
+---
+
+## 목표
+
+- `cursor-rules/`의 원본(한/영/플레인)을 기반으로
+  - 번역 결과와 복사본을 `web/cursor-rules/`에만 생성
+  - `web/files.json`에는 **최종 산출물(web/cursor-rules/ 내부 md만)** 목록 생성
+  - `web/version-info.json`으로 커밋/브랜치 메타 표시
+  - `web/index.html`(오프라인 Builder)에서
+    - 파일 선택은 **베이스 경로(`*.md`)** 기준으로만 노출
+    - “파일 내용 불러오기” 시 **KR/EN 동시 로드**
+    - `presets.json`을 **키(경로/패턴)** 로 정의하고, 실제 본문은 **files.json + fetch**로 동적 로드
+- GitHub Actions에서 동일 동작 보장 (macOS 등 로컬에서도 동작)
+
+---
+
+## 디렉토리 구조
+
+
+cursor-rules/ # 작성(원본)
+common/
+common/stacks/
+project/
+generated/
+presets.json # 프리셋 정의(원본) ← 추가
+glossary.kr-en.json # (선택) 용어집
+scripts/
+translate_and_copy.py
+generate_web.sh
+web/ # 산출(빌드 타깃)
+cursor-rules/ # 번역/복사된 결과만
+files.json
+version-info.json
+index.html # 오프라인 Builder
+
+
+
+---
+
+## 1) 번역 & 복사 (Python)
+
+- 입력 규칙
+  - `*.kr.md`  → `web/.../*.kr.md`(복사) + `web/.../*.en.md`(번역)
+  - `*.en.md`  → `web/.../*.en.md`(복사)
+  - `*.md`(플레인) → `web/.../*.kr.md`(이름 변환 후 저장) + `web/.../*.en.md`(번역)
+- EN 산출물에 `source_sha`(front matter)로 재번역 방지
+- `glossary.kr-en.json`이 있으면 용어를 강제 적용
+
+> 이미 제공된 `scripts/translate_and_copy.py`를 그대로 사용.
+
+---
+
+## 2) GitHub Actions 워크플로우
+
+### `.github/workflows/build-web.yml` (최신 개선판)
+```yaml
+name: Build & Translate (KR→EN) and Publish Web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cursor-rules/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: web-gen
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade google-generativeai pyyaml
+
+      - name: Translate KR → EN & stage into web/cursor-rules
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python scripts/translate_and_copy.py
+          echo "--- staged files under web/cursor-rules ---"
+          find web/cursor-rules -type f -name "*.md" | sort
+
+      - name: Generate files.json & version-info.json
+        run: |
+          bash scripts/generate_web.sh
+          echo "--- files.json preview ---"
+          head -n 50 web/files.json || true
+
+      - name: Commit & push web/ changes
+        run: |
+          if [ -n "$(git status --porcelain web/)" ]; then
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+            git add web/
+            git commit -m "[skip ci] docs(web): auto-update translated files and indexes"
+            git pull --rebase || true
+            git push
+          else
+            echo "No changes in web/"
+          fi
+```
+
+**주요 개선사항:**
+- 번역 후 staged 파일 목록 출력으로 디버깅 지원
+- `files.json` 미리보기로 생성 결과 확인
+- `[skip ci]` 태그로 무한 루프 방지
+- 조건부 커밋으로 불필요한 커밋 방지
+
+---
+
+## 3) 인덱스 생성 (macOS/리눅스 호환)
+
+**핵심 포인트**
+- **`web/cursor-rules`는 지우지 않음.** (번역 산출물 보존)
+- `files.json`의 `path`는 **`cursor-rules/...`** 로 시작 (웹 루트가 `web/` 이므로 `web/` 접두어 없음)
+- macOS `sed` 호환: 커밋 메시지 줄바꿈 치환 시 `awk` 사용 권장
+
+### `scripts/generate_web.sh` (최신 개선판)
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Building web/ indexes (preserving web/cursor-rules)"
+rm -f web/files.json web/version-info.json
+mkdir -p web
+
+# GH 환경변수 안전 처리
+GITHUB_REF=${GITHUB_REF:-"undefined"}
+GITHUB_REPOSITORY=${GITHUB_REPOSITORY:-"undefined"}
+ref_name="${GITHUB_REF_NAME:-${GITHUB_REF#refs/heads/}}"
+
+# 산출물 존재 확인 (개선: 더 명확한 에러 메시지)
+if [ ! -d "web/cursor-rules" ]; then
+  echo "ERROR: web/cursor-rules not found. Did translate_and_copy.py run?" >&2
+  exit 1
+fi
+
+# 1) files.json 생성 — web/cursor-rules 안의 .md만
+{
+  echo "["
+  first=true
+  while IFS= read -r -d '' file; do
+    # "web/" 접두어 제거 → 저장소 루트 기준 경로로 변환
+    rel_path="${file#web/}"
+    
+    base="$(basename "$rel_path")"
+    lang="und"
+    [[ "$base" =~ \.en\.md$ ]] && lang="en"
+    [[ "$base" =~ \.kr\.md$ ]] && lang="kr"
+
+    $first || echo ","
+    first=false
+
+    RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${ref_name}/${rel_path}"
+    printf '{"path":"%s","raw_url":"%s","lang":"%s"}' "$rel_path" "$RAW_URL" "$lang"
+  done < <(find "web/cursor-rules" -type f -name "*.md" -print0 | sort -z)
+  echo
+  echo "]"
+} > web/files.json
+
+# 2) 커밋 정보 수집
+last_commit_id="$(git rev-parse HEAD)"
+committed_at="$(git log -1 --format=%cI)"
+
+# 커밋 메시지를 JSON-safe 문자열로 인코딩 (개선: Python 서브프로세스 사용)
+last_commit_message_json="$(
+python3 - <<'PY'
+import sys, json, subprocess
+msg = subprocess.check_output(["git","log","-1","--pretty=%B"], text=True)
+print(json.dumps(msg.rstrip()))
+PY
+)"
+
+# 3) presets.json 복사 (authoring: cursor-rules/ → serving: web/cursor-rules/)
+if [ -f "cursor-rules/presets.json" ]; then
+  mkdir -p web/cursor-rules
+  cp cursor-rules/presets.json web/cursor-rules/presets.json
+  echo "Copied cursor-rules/presets.json → web/cursor-rules/presets.json"
+fi
+
+# 4) version-info.json 생성
+cat > web/version-info.json <<JSON
+{
+  "last_commit_id": "${last_commit_id}",
+  "last_commit_message": ${last_commit_message_json},
+  "branch": "${ref_name}",
+  "committed_at": "${committed_at}",
+  "generated_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+}
+JSON
+
+echo "web/ indexes built"
+```
+
+
+## 4) Presets.json 형식 (새로운 구조)
+
+### 구조 개요
+`presets.json`은 두 가지 프리셋 타입을 지원합니다:
+
+```json
+{
+  "version": 1,
+  "presets": [
+    {
+      "id": "one-file-security",
+      "type": "base",
+      "base": "cursor-rules/common/10-security.md",
+      "desc": "Organization Security & Secrets Baseline",
+      "scope": "Always",
+      "globs": "**/*"
+    },
+    {
+      "id": "stack-bundle", 
+      "type": "query",
+      "include": ["cursor-rules/common/stacks/*.md"],
+      "exclude": ["**/_*.md"],
+      "defaults": {
+        "scope": "Auto",
+        "globs": "**/*",
+        "descPrefix": "Stack preset: "
+      }
+    }
+  ]
+}
+```
+
+### 프리셋 타입
+
+**1) `type: "base"` - 단일 파일 기반**
+- `base`: 실제 파일 경로 (베이스 경로, 언어 접미사 없음)
+- 런타임에 `.kr.md`, `.en.md` 자동 로드
+- 단일 규칙으로 바로 추가
+
+**2) `type: "query"` - 패턴 매칭 기반**
+- `include`: 포함할 패턴 목록 (glob 지원)
+- `exclude`: 제외할 패턴 목록 (선택적)
+- `defaults`: 각 매칭된 파일에 적용할 기본값
+- 다중 파일을 한 번에 프리셋으로 추가
+
+---
+
+## 5) 오프라인 Builder (index.html) 구현 상세
+
+### 핵심 동작 흐름
+
+**1) 파일 목록 구성**
+- `files.json`에서 모든 `.md` 파일 로드
+- 베이스 경로(`*.md`) 기준으로 그룹핑
+- 언어별 파일 매핑 (`.kr.md`, `.en.md`, 일반 `.md`)
+
+```javascript
+function buildBaseIndex(files) {
+  const map = new Map();
+  for (const f of files) {
+    const base = f.path.replace(/\.kr\.md$|\.en\.md$/i, '.md');
+    const e = map.get(base) || { base, kr: null, en: null, plain: null };
+    if (/\.kr\.md$/i.test(f.path)) e.kr = f;
+    else if (/\.en\.md$/i.test(f.path)) e.en = f;
+    else e.plain = e.plain || f;
+    map.set(base, e);
+  }
+  return Array.from(map.values()).sort((a,b) => a.base.localeCompare(b.base));
+}
+```
+
+**2) 파일 선택 UI**
+- 베이스 경로만 selectbox에 표시 (예: `cursor-rules/common/stacks/node-react.md`)
+- 언어 접미사 숨김으로 UI 단순화
+- 검색 가능한 dropdown으로 대량 파일 지원
+
+**3) 파일 내용 로딩**
+- "파일 내용 불러오기" 버튼 클릭 시:
+  - 선택된 베이스 경로 기준으로 KR/EN 버전 동시 로드
+  - `raw_url`을 통해 GitHub에서 직접 fetch
+  - 왼쪽(KR), 오른쪽(EN) 패널에 각각 표시
+  - 없는 언어는 일반 `.md` 파일로 fallback
+
+**4) 프리셋 로딩**
+- `presets.json` 동적 로드
+- `type: "base"` → 단일 파일 즉시 로드
+- `type: "query"` → include/exclude 패턴으로 다중 파일 필터링
+- 각 프리셋의 `defaults` 설정을 매칭된 파일에 적용
+
+**5) 규칙 편집 & 출력**
+- 이중 언어 편집 지원 (KR/EN 동시 편집)
+- Cursor Rules 형식으로 최종 출력
+- 메타데이터(scope, globs) 자동 적용
+
+### 주요 개선사항
+- **검색 가능한 selectbox**: 대량 파일 탐색 용이
+- **프리셋 시스템**: 자주 사용하는 조합을 미리 정의
+- **이중 언어 지원**: KR/EN 동시 편집 및 미리보기
+- **GitHub 직접 연동**: `raw_url`로 최신 내용 보장
+- **오프라인 동작**: 한 번 로드 후 로컬 편집 가능
+
+---
+
+## 개선 요약 (최신 커밋 기준)
+
+### 이번 업데이트에서 반영된 주요 변경사항:
+
+**1) GitHub Actions 워크플로우 강화**
+- 빌드 과정 로깅 개선 (staged files, files.json 미리보기)
+- 조건부 커밋으로 불필요한 커밋 방지
+- `[skip ci]` 태그로 무한 루프 방지
+
+**2) `generate_web.sh` 스크립트 개선**
+- Python 서브프로세스로 커밋 메시지 JSON-safe 인코딩
+- 더 명확한 에러 메시지와 디버깅 정보
+- presets.json 자동 복사 로직 추가
+
+**3) 새로운 presets.json 형식 지원**
+- `type: "base"` (단일 파일) vs `type: "query"` (패턴 매칭)
+- 유연한 프리셋 정의로 다양한 사용 사례 지원
+- 런타임 동적 로딩으로 확장성 확보
+
+**4) web/index.html 구현 상세 문서화**
+- 베이스 인덱스 구성 로직 설명
+- 이중 언어 로딩 메커니즘 명시
+- 프리셋 처리 흐름 구체화
+
+이 가이드는 프로젝트의 **번역 → 웹 산출 → 오프라인 Builder** 전체 흐름을 포괄하며, 로컬 개발과 GitHub Actions 양쪽에서 동일하게 동작하도록 설계되었습니다.
+
+
