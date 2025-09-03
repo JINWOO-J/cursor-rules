@@ -1,7 +1,7 @@
 {
-  "last_commit_id": "a7a8a3372ce87333cfc8b621d916a8f0657080c1",
-  "last_commit_message": "fix(workflow): update Python setup caching in build workflow\n\n- Changed the cache option in the Python setup step from false to an empty string for better compatibility.\n- This adjustment ensures that caching behavior is correctly interpreted during the build process.",
+  "last_commit_id": "c36427b92d0b7fdf3d0faf96cf38446302fb929f",
+  "last_commit_message": "[skip ci] docs(web): auto-update translated files and indexes",
   "branch": "main",
-  "committed_at": "2025-09-03T11:39:28+09:00",
-  "generated_at": "2025-09-03T02:40:20Z"
+  "committed_at": "2025-09-03T02:40:20Z",
+  "generated_at": "2025-09-03T02:44:41Z"
 }

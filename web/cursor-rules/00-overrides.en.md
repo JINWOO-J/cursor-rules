@@ -13,5 +13,5 @@ source_sha: 008809e669d25471ab2a4146e164960ad382298243a3469f347d298bfd80185d
 ## Specific to this project
 - **Documentation**: All rule changes must be reflected in `PRD.md` and `README.md`.
 - **Version Control**: The `.cursorrules.md` file is version controlled with Git.
-- **Rule Generation Script**: Use the `rules-merge` target in the `Makefile` to generate rules.
+- **Rule Generation Script**: Rules are generated using the `rules-merge` target in the `Makefile`.
 ```
