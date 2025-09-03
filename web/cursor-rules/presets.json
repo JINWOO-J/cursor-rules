@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "presets": [
+    {
+      "id": "one-file-security",
+      "type": "base",
+      "base": "cursor-rules/common/10-security.md",
+      "desc": "Organization Security & Secrets Baseline sss",
+      "scope": "Always",
+      "globs": "**/*"
+    },
+    {
+      "id": "stack-bundle",
+      "type": "query",
+      "include": ["cursor-rules/common/stacks/*.md"],
+      "exclude": ["**/_*.md"],
+      "defaults": {
+        "scope": "Auto",
+        "globs": "**/*",
+        "descPrefix": "Stack preset: "
+      }
+    }
+  ]
+}

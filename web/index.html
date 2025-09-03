@@ -254,7 +254,7 @@
             
             selectedDiv.addEventListener('click', (e) => {
                 e.stopPropagation();
-                closeAllSelect(this);
+                closeAllSelect(selectedDiv);
                 itemsDiv.classList.toggle('select-hide');
                 selectedDiv.classList.toggle('select-arrow-active');
             });
@@ -309,108 +309,108 @@
         }
     }
 
-    // .md 파일 목록 가져오기 (정적 JSON 파일 사용)
     async function loadMdFileList() {
-        try {
-            const response = await fetch('files.json');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const files = await response.json();
-            
-            // 템플릿의 select 요소에 파일 목록 추가 (새로 추가되는 규칙용)
-            const templateSelects = tmpl.content.querySelectorAll('.searchable-select');
-            templateSelects.forEach(templateSelectDiv => {
-                const selectElement = templateSelectDiv.querySelector('select');
-                const selectedDiv = templateSelectDiv.querySelector('.select-selected');
-                const itemsDiv = templateSelectDiv.querySelector('.select-items');
-                
-                // 기존 옵션 제거 (기본 옵션 제외)
-                while (selectElement.options.length > 1) {
-                    selectElement.remove(1);
-                }
-                // 기존 항목 제거 (검색 입력 제외)
-                const searchInput = itemsDiv.querySelector('.select-search');
-                itemsDiv.innerHTML = '';
-                itemsDiv.appendChild(searchInput);
-                
-                // 새 파일 목록 추가
-                files.forEach(file => {
-                    const option = document.createElement('option');
-                    option.value = file[currentFileKey];
-                    option.textContent = file.path;
-                    selectElement.appendChild(option);
-                    
-                    const item = document.createElement('DIV');
-                    item.innerHTML = file.path;
-                    item.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        selectedDiv.innerHTML = file.path;
-                        selectElement.value = file[currentFileKey];
-                        closeAllSelect();
-                    });
-                    itemsDiv.appendChild(item);
-                });
-                
-                // 기본 선택값 설정
-                selectedDiv.innerHTML = "-- 파일을 선택하세요 --";
-                selectElement.value = "";
+      try {
+        const response = await fetch('files.json');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const files = await response.json();
+        const bases = buildBaseIndex(files);
+
+        // 템플릿의 select(새 규칙용)에 옵션 주입
+        const templateSelects = tmpl.content.querySelectorAll('.searchable-select');
+        templateSelects.forEach(templateSelectDiv => {
+          const selectElement = templateSelectDiv.querySelector('select');
+          const selectedDiv = templateSelectDiv.querySelector('.select-selected');
+          const itemsDiv = templateSelectDiv.querySelector('.select-items');
+
+          while (selectElement.options.length > 1) selectElement.remove(1);
+          const searchInput = itemsDiv.querySelector('.select-search');
+          itemsDiv.innerHTML = '';
+          itemsDiv.appendChild(searchInput);
+
+          bases.forEach(b => {
+            const option = document.createElement('option');
+            option.value = b.base;       // 항상 base path
+            option.textContent = b.base;
+            selectElement.appendChild(option);
+
+            const item = document.createElement('DIV');
+            item.innerHTML = b.base;
+            item.addEventListener('click', (e) => {
+              e.stopPropagation();
+              selectedDiv.innerHTML = b.base;
+              selectElement.value = b.base;
+              closeAllSelect();
             });
-            
-            // 모든 규칙 카드의 select 요소에 파일 목록 추가
-            document.querySelectorAll('.rule .searchable-select').forEach(selectDiv => {
-                const selectElement = selectDiv.querySelector('select');
-                const selectedDiv = selectDiv.querySelector('.select-selected');
-                const itemsDiv = selectDiv.querySelector('.select-items');
-                
-                // 기존 옵션 제거 (기본 옵션 제외)
-                while (selectElement.options.length > 1) {
-                    selectElement.remove(1);
-                }
-                // 기존 항목 제거 (검색 입력 제외)
-                const searchInput = itemsDiv.querySelector('.select-search');
-                itemsDiv.innerHTML = '';
-                itemsDiv.appendChild(searchInput);
-                
-                // 새 파일 목록 추가
-                files.forEach(file => {
-                    const option = document.createElement('option');
-                    option.value = file[currentFileKey];
-                    option.textContent = file.path;
-                    selectElement.appendChild(option);
-                    
-                    const item = document.createElement('DIV');
-                    item.innerHTML = file.path;
-                    item.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        selectedDiv.innerHTML = file.path;
-                        selectElement.value = file[currentFileKey];
-                        closeAllSelect();
-                    });
-                    itemsDiv.appendChild(item);
-                });
-                
-                // 현재 선택값 유지 또는 기본값 설정
-                const currentValue = selectElement.value;
-                if (currentValue) {
-                    const currentOption = Array.from(selectElement.options).find(opt => opt.value === currentValue);
-                    if (currentOption) {
-                        selectedDiv.innerHTML = currentOption.textContent;
-                    }
-                } else {
-                    selectedDiv.innerHTML = "-- 파일을 선택하세요 --";
-                }
+            itemsDiv.appendChild(item);
+          });
+
+          selectedDiv.innerHTML = "-- 파일을 선택하세요 --";
+          selectElement.value = "";
+        });
+
+        // 이미 추가된 규칙 카드들의 select 갱신
+        document.querySelectorAll('.rule .searchable-select').forEach(selectDiv => {
+          const selectElement = selectDiv.querySelector('select');
+          const selectedDiv = selectDiv.querySelector('.select-selected');
+          const itemsDiv = selectDiv.querySelector('.select-items');
+
+          while (selectElement.options.length > 1) selectElement.remove(1);
+          const searchInput = itemsDiv.querySelector('.select-search');
+          itemsDiv.innerHTML = '';
+          itemsDiv.appendChild(searchInput);
+
+          bases.forEach(b => {
+            const option = document.createElement('option');
+            option.value = b.base;
+            option.textContent = b.base;
+            selectElement.appendChild(option);
+
+            const item = document.createElement('DIV');
+            item.innerHTML = b.base;
+            item.addEventListener('click', (e) => {
+              e.stopPropagation();
+              selectedDiv.innerHTML = b.base;
+              selectElement.value = b.base;
+              closeAllSelect();
             });
-        } catch (error) {
-            console.error('파일 목록을 불러오는 중 오류 발생:', error);
-        }
+            itemsDiv.appendChild(item);
+          });
+
+          const currentValue = selectElement.value;
+          if (currentValue) {
+            const currentOption = Array.from(selectElement.options).find(opt => opt.value === currentValue);
+            if (currentOption) selectedDiv.innerHTML = currentOption.textContent;
+          } else {
+            selectedDiv.innerHTML = "-- 파일을 선택하세요 --";
+          }
+        });
+      } catch (error) {
+        console.error('파일 목록을 불러오는 중 오류 발생:', error);
+      }
     }
+
+
 
     function escapeYaml(str){
       if (!str) return '';
       // escape double quotes, newlines aren't used in description
       return String(str).replace(/"/g, '\\"');
     }
+
+    function buildBaseIndex(files){
+      const map = new Map();
+      for (const f of files){
+        const base = f.path.replace(/\.kr\.md$|\.en\.md$/i, '.md');
+        const e = map.get(base) || { base, kr: null, en: null, plain: null };
+        if (/\.kr\.md$/i.test(f.path)) e.kr = f;
+        else if (/\.en\.md$/i.test(f.path)) e.en = f;
+        else e.plain = e.plain || f; // 첫 plain을 보존
+        map.set(base, e);
+      }
+      return Array.from(map.values()).sort((a,b)=>a.base.localeCompare(b.base));
+    }
+
 
     function buildFrontmatter({desc, scope, globs}){
       const lines = ['---'];
@@ -426,20 +426,23 @@
       return lines.join('\n');
     }
 
-    function buildMDC({name, desc, scope, globs, body}){
-      const fm = buildFrontmatter({desc, scope, globs});
-      return fm + '\n\n' + (body ? body.trim() : '') + '\n';
-    }
-
     function ruleFromCard(card){
       return {
         name: card.querySelector('.f-name').value.trim(),
         desc: card.querySelector('.f-desc').value,
         scope: card.querySelector('.f-scope').value,
         globs: card.querySelector('.f-globs').value,
-        body: card.querySelector('.f-body').value
+        bodyKr: card.querySelector('.f-body-kr').value,
+        bodyEn: card.querySelector('.f-body-en').value
       };
     }
+
+    function buildMDC({name, desc, scope, globs, bodyKr, bodyEn}){
+      const fm = buildFrontmatter({desc, scope, globs});
+      const body = (bodyEn && bodyEn.trim()) || (bodyKr && bodyKr.trim()) || '';
+      return fm + '\n\n' + body + '\n';
+    }
+
 
     function setPreview(card, text){ card.querySelector('.out').textContent = text; }
 
@@ -455,14 +458,12 @@
     async function addRule(prefill){
       const node = tmpl.content.firstElementChild.cloneNode(true);
       if (prefill){
-        // 파일명은 select 옵션에서 선택하도록 하므로 prefill은 생략
-        // node.querySelector('.f-name').value = prefill.name || '';
         node.querySelector('.f-desc').value = prefill.desc || '';
         node.querySelector('.f-scope').value = prefill.scope || 'Auto';
         node.querySelector('.f-globs').value = prefill.globs || '';
-        node.querySelector('.f-body').value = prefill.body || '';
+        node.querySelector('.f-body-kr').value = prefill.bodyKr || prefill.body || '';
+        node.querySelector('.f-body-en').value = prefill.bodyEn || '';
       }
-      
       // 파일 목록 로드
       await loadMdFileListForNewRule(node);
       
@@ -482,114 +483,136 @@
             e.target.textContent = '복사됨';
             setTimeout(() => e.target.textContent = '내용 복사', 1200);
           });
+
         } else if (action === 'download'){
           const out = buildMDC(data);
-          const name = data.name || 'rule.mdc';
-          downloadText(name, out);
+          const name = mdcNameFromSelectedValue(node.querySelector('.f-name').value);          
+          downloadText(name, out);        
+
         } else if (action === 'remove'){
           node.remove();
         } else if (action === 'load-file-content') {
-            const selectedFile = node.querySelector('.f-name').value;
-            if (!selectedFile) {
-                alert('파일을 먼저 선택하세요.');
-                return;
-            }
-            try {
-                // 먼저 files.json에서 해당 파일의 raw_url을 찾기
-                const fileListResponse = await fetch('files.json');
-                if (!fileListResponse.ok) {
-                    throw new Error(`HTTP error! status: ${fileListResponse.status}`);
-                }
-                const files = await fileListResponse.json();
-                const file = files.find(f => f[currentFileKey] === selectedFile);
+          const basePath = node.querySelector('.f-name').value; // 항상 cursor-rules/.../foo.md
+          if (!basePath) {
+            alert('파일을 먼저 선택하세요.');
+            return;
+          }
+          try {
+            const fileListResponse = await fetch('files.json');
+            if (!fileListResponse.ok) throw new Error(`HTTP error! status: ${fileListResponse.status}`);
+            const files = await fileListResponse.json();
 
-                const file_url = fileKeySelector.value === 'path' ? file.path : file.raw_url;
-                
-                if (!file || !file_url) {
-                    alert('파일의 raw URL을 찾을 수 없습니다.');
-                    return;
-                }
-                
-                // raw URL을 통해 파일 내용 가져오기
-                const response = await fetch(file_url);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const content = await response.text();
-                node.querySelector('.f-body').value = content;
-                
-                // 파일명에서 .md 확장자를 제거하고 .mdc로 변경
-                const mdcFilename = file.path.replace(/\.md$/, '.mdc');
-                node.querySelector('.f-name').value = file[currentFileKey];
-                
-                // 설명도 자동으로 채우기 (파일명 기반)
-                const desc = mdcFilename.replace(/\.mdc$/, '').replace(/[-_]/g, ' ');
-                node.querySelector('.f-desc').value = desc.charAt(0).toUpperCase() + desc.slice(1) + ' (from ' + file.path + ')';
-                
-                // 선택된 파일 표시 업데이트
-                const selectDiv = node.querySelector('.searchable-select');
-                const selectedDiv = selectDiv.querySelector('.select-selected');
-                selectedDiv.innerHTML = file.path;
-            } catch (error) {
-                console.error('파일 내용을 불러오는 중 오류 발생:', error);
-                alert('파일 내용을 불러오는 데 실패했습니다.');
-            }
+            // 베이스에서 KR/EN 후보 경로 만들기
+            const krPath = basePath.replace(/\.md$/i, '.kr.md');
+            const enPath = basePath.replace(/\.md$/i, '.en.md');
+
+            // files.json에서 엔트리 찾기 (없으면 fallback: plain/md를 lang 단서로)
+            const krEntry =
+              files.find(f => f.path === krPath) ||
+              files.find(f => f.path === basePath && (f.lang === 'kr' || f.lang === 'und'));
+
+            const enEntry =
+              files.find(f => f.path === enPath) ||
+              files.find(f => f.path === basePath && f.lang === 'en');
+
+            const urlFor = (entry) => {
+              if (!entry) return null;
+              return (fileKeySelector.value === 'path') ? entry.path : entry.raw_url;
+            };
+
+            // 병렬 로드
+            const [krContent, enContent] = await Promise.all([
+              (async () => {
+                const u = urlFor(krEntry);
+                if (!u) return '';
+                const r = await fetch(u);
+                if (!r.ok) throw new Error(`HTTP error (KR)! status: ${r.status}`);
+                return await r.text();
+              })(),
+              (async () => {
+                const u = urlFor(enEntry);
+                if (!u) return '';
+                const r = await fetch(u);
+                if (!r.ok) throw new Error(`HTTP error (EN)! status: ${r.status}`);
+                return await r.text();
+              })(),
+            ]);
+
+            // 좌/우 채우기 (있을 때만 갱신)
+            if (krContent) node.querySelector('.f-body-kr').value = krContent;
+            if (enContent) node.querySelector('.f-body-en').value = enContent;
+
+            // 설명/표시 업데이트
+            const mdcFilename = basePath.split('/').pop().replace(/\.md$/i, '.mdc');
+            const descBase = mdcFilename.replace(/\.mdc$/,'').replace(/[-_]/g,' ');
+            node.querySelector('.f-desc').value =
+              descBase.charAt(0).toUpperCase() + descBase.slice(1) + ` (from ${basePath})`;
+
+            const selectDiv = node.querySelector('.searchable-select');
+            selectDiv.querySelector('.select-selected').innerHTML = basePath;
+          } catch (error) {
+            console.error('파일 내용을 불러오는 중 오류 발생:', error);
+            alert('파일 내용을 불러오는 데 실패했습니다.');
+          }
         }
+
+     
       });
       $rules.appendChild(node);
     }
-    
-    // 새로운 규칙 카드에 파일 목록 로드 (정적 JSON 파일 사용)
-    async function loadMdFileListForNewRule(ruleNode) {
-        try {
-            const response = await fetch('files.json');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const files = await response.json();
-            
-            // 새로운 규칙 카드의 select 요소에 파일 목록 추가
-            const selectDiv = ruleNode.querySelector('.searchable-select');
-            const selectElement = selectDiv.querySelector('select');
-            const selectedDiv = selectDiv.querySelector('.select-selected');
-            const itemsDiv = selectDiv.querySelector('.select-items');
-            
-            if (selectElement) {
-                // 기존 옵션 제거 (기본 옵션 제외)
-                while (selectElement.options.length > 1) {
-                    selectElement.remove(1);
-                }
-                // 기존 항목 제거 (검색 입력 제외)
-                const searchInput = itemsDiv.querySelector('.select-search');
-                itemsDiv.innerHTML = '';
-                itemsDiv.appendChild(searchInput);
-                
-                // 새 파일 목록 추가
-                files.forEach(file => {
-                    const option = document.createElement('option');
-                    option.value = file[currentFileKey];
-                    option.textContent = file.path;
-                    selectElement.appendChild(option);
-                    
-                    const item = document.createElement('DIV');
-                    item.innerHTML = file.path;
-                    item.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        selectedDiv.innerHTML = file.path;
-                        selectElement.value = file[currentFileKey];
-                        closeAllSelect();
-                    });
-                    itemsDiv.appendChild(item);
-                });
-                
-                // 기본 선택값 설정
-                selectedDiv.innerHTML = "-- 파일을 선택하세요 --";
-                selectElement.value = "";
-            }
-        } catch (error) {
-            console.error('파일 목록을 불러오는 중 오류 발생:', error);
-        }
+
+    function mdcNameFromSelectedValue(v){
+      if (!v) return 'rule.mdc';
+      const base = v.split('/').pop(); // path or raw_url 모두 마지막 토큰 사용
+      return base.replace(/\.md$/i, '.mdc') || 'rule.mdc';
     }
+
+
+    // 새로운 규칙 카드에 파일 목록 로드 (정적 JSON 파일 사용)
+    
+    async function loadMdFileListForNewRule(ruleNode) {
+      try {
+        const response = await fetch('files.json');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const files = await response.json();
+        const bases = buildBaseIndex(files);
+
+        const selectDiv = ruleNode.querySelector('.searchable-select');
+        const selectElement = selectDiv.querySelector('select');
+        const selectedDiv = selectDiv.querySelector('.select-selected');
+        const itemsDiv = selectDiv.querySelector('.select-items');
+
+        if (!selectElement) return;
+
+        while (selectElement.options.length > 1) selectElement.remove(1);
+        const searchInput = itemsDiv.querySelector('.select-search');
+        itemsDiv.innerHTML = '';
+        itemsDiv.appendChild(searchInput);
+
+        bases.forEach(b => {
+          const option = document.createElement('option');
+          option.value = b.base;       // 항상 base path
+          option.textContent = b.base;
+          selectElement.appendChild(option);
+
+          const item = document.createElement('DIV');
+          item.innerHTML = b.base;
+          item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectedDiv.innerHTML = b.base;
+            selectElement.value = b.base;
+            closeAllSelect();
+          });
+          itemsDiv.appendChild(item);
+        });
+
+        selectedDiv.innerHTML = "-- 파일을 선택하세요 --";
+        selectElement.value = "";
+      } catch (error) {
+        console.error('파일 목록을 불러오는 중 오류 발생:', error);
+      }
+    }
+
     
     // 새로운 규칙 카드에 대한 검색 가능한 selectbox 초기화
     function initSearchableSelectForRule(ruleNode) {
@@ -603,7 +626,7 @@
         
         selectedDiv.addEventListener('click', (e) => {
             e.stopPropagation();
-            closeAllSelect(this);
+            closeAllSelect(selectedDiv);
             itemsDiv.classList.toggle('select-hide');
             selectedDiv.classList.toggle('select-arrow-active');
         });
@@ -637,6 +660,167 @@
         });
     }
 
+    // async function fetchPresets(url = 'cursor-rules/presets.json') {
+    //   const res = await fetch(url);
+    //   if (!res.ok) throw new Error(`Failed to load presets: ${res.status}`);
+    //   const json = await res.json();
+    //   if (!Array.isArray(json.presets)) throw new Error('Invalid presets schema');
+    //   return json.presets;
+    // }
+
+
+    // async function loadDynamicPresetsFromFiles() {
+    //   const res = await fetch('files.json');
+    //   if (!res.ok) throw new Error('files.json load failed');
+    //   const files = await res.json();
+    //   const bases = buildBaseIndex(files); // 이미 구현됨
+
+    //   // UI: 선택 모달 없이 바로 카드 생성 예시
+    //   $rules.innerHTML = '';
+    //   for (const b of bases) {
+    //     await addRule({
+    //       desc: (b.base.split('/').pop().replace(/\.md$/,'')).replace(/[-_]/g,' ').replace(/^\w/, c => c.toUpperCase()),
+    //       scope: 'Auto',
+    //       globs: '**/*',
+    //       bodyKr: '', bodyEn: '' // 버튼으로 ‘파일 내용 불러오기’ 누르면 채워짐
+    //     });
+    //   }
+    // }
+    function globToRegExp(glob){
+      // 매우 단순한 glob: **, *, ? 만 지원
+      const re = glob
+        .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+        .replace(/\*\*/g, '§§DOUBLESTAR§§')
+        .replace(/\*/g, '[^/]*')
+        .replace(/\?/g, '[^/]')
+        .replace(/§§DOUBLESTAR§§/g, '.*');
+      return new RegExp('^' + re + '$');
+    }
+
+    function matchGlobs(path, include = ['**/*'], exclude = []){
+      const incOk = include.length === 0 || include.some(g => globToRegExp(g).test(path));
+      const excOk = exclude.every(g => !globToRegExp(g).test(path));
+      return incOk && excOk;
+    }
+
+    // 이미 있으나, 여기 다시 명시 (bases: [{base,kr,en,plain}])
+    function buildBaseIndex(files){
+      const map = new Map();
+      for (const f of files){
+        const base = f.path.replace(/\.kr\.md$|\.en\.md$/i, '.md');
+        const e = map.get(base) || { base, kr: null, en: null, plain: null };
+        if (/\.kr\.md$/i.test(f.path)) e.kr = f;
+        else if (/\.en\.md$/i.test(f.path)) e.en = f;
+        else e.plain = e.plain || f;
+        map.set(base, e);
+      }
+      return Array.from(map.values()).sort((a,b)=>a.base.localeCompare(b.base));
+    }
+
+    async function fetchPresets(url = 'cursor-rules/presets.json') {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`Failed to load presets: ${res.status}`);
+      const json = await res.json();
+      if (!Array.isArray(json.presets)) throw new Error('Invalid presets schema');
+      return json.presets;
+    }
+
+    async function fetchFilesJson(){
+      const res = await fetch('files.json', { cache: 'no-store' });
+      if (!res.ok) throw new Error(`files.json load failed: ${res.status}`);
+      return await res.json();
+    }
+
+    function urlFor(entry){
+      if (!entry) return null;
+      return (fileKeySelector.value === 'path') ? entry.path : entry.raw_url;
+    }
+
+    // basePath(…/foo.md) → [krContent, enContent] 로드
+    async function loadPairForBase(files, basePath){
+      const krPath = basePath.replace(/\.md$/i, '.kr.md');
+      const enPath = basePath.replace(/\.md$/i, '.en.md');
+
+      const krEntry =
+        files.find(f => f.path === krPath) ||
+        files.find(f => f.path === basePath && (f.lang === 'kr' || f.lang === 'und'));
+
+      const enEntry =
+        files.find(f => f.path === enPath) ||
+        files.find(f => f.path === basePath && f.lang === 'en');
+
+      const [krContent, enContent] = await Promise.all([
+        (async()=>{ const u=urlFor(krEntry); if(!u) return ''; const r=await fetch(u); if(!r.ok) throw new Error(`KR fetch ${r.status}`); return r.text(); })(),
+        (async()=>{ const u=urlFor(enEntry); if(!u) return ''; const r=await fetch(u); if(!r.ok) throw new Error(`EN fetch ${r.status}`); return r.text(); })()
+      ]);
+      return [await krContent, await enContent];
+    }
+
+    async function expandPresetToBases(preset, bases){
+      // preset.type === 'base'
+      if (preset.type === 'base' && typeof preset.base === 'string'){
+        const basePath = preset.base.replace(/\.kr\.md$|\.en\.md$/i, '.md');
+        const found = bases.find(b => b.base === basePath);
+        return found ? [found.base] : [];
+      }
+
+      // preset.type === 'query'
+      if (preset.type === 'query'){
+        const include = Array.isArray(preset.include) ? preset.include : ['**/*.md'];
+        const exclude = Array.isArray(preset.exclude) ? preset.exclude : [];
+        return bases
+          .map(b => b.base)
+          .filter(base => matchGlobs(base, include, exclude));
+      }
+
+      // fallback: 무시
+      return [];
+    }
+
+    document.getElementById('loadPresets').onclick = async () => {
+      try {
+        // 1) 프리셋 & files.json
+        const [presets, files] = await Promise.all([fetchPresets(), fetchFilesJson()]);
+        const basesIndex = buildBaseIndex(files);
+
+        // 2) 전체 초기화
+        $rules.innerHTML = '';
+
+        // 3) 각 프리셋을 실제 base 목록으로 전개
+        for (const p of presets) {
+          const basePaths = await expandPresetToBases(p, basesIndex);
+          if (basePaths.length === 0) continue;
+
+          // 4) 각 base에 대해 KR/EN 로드 → 카드 생성
+          for (const basePath of basePaths) {
+            const [krContent, enContent] = await loadPairForBase(files, basePath);
+
+            // desc/scope/globs 결정 (preset 개별 값 또는 defaults)
+            const scope = p.scope || (p.defaults && p.defaults.scope) || 'Auto';
+            const globs = p.globs || (p.defaults && p.defaults.globs) || '**/*';
+
+            let desc = p.desc || (p.defaults && p.defaults.desc) || '';
+            if (!desc) {
+              const baseName = basePath.split('/').pop().replace(/\.md$/,'').replace(/[-_]/g,' ');
+              const prefix = (p.defaults && p.defaults.descPrefix) ? p.defaults.descPrefix : '';
+              desc = (prefix + baseName).replace(/^\w/, c => c.toUpperCase());
+            }
+
+            await addRule({
+              desc,
+              scope,
+              globs,
+              bodyKr: krContent || '',
+              bodyEn: enContent || ''
+            });
+          }
+        }
+      } catch (e) {
+        console.error(e);
+        alert('프리셋을 불러오지 못했습니다.');
+      }
+    };
+
     // Toolbar actions
     document.getElementById('addRule').onclick = () => addRule({ scope: 'Auto', globs: '**/*' });
 
@@ -648,9 +832,11 @@
       for (const card of cards){
         const data = ruleFromCard(card);
         const out = buildMDC(data);
-        downloadText(data.name || 'rule.mdc', out);
+        const name = mdcNameFromSelectedValue(card.querySelector('.f-name').value);
+        downloadText(name, out);
       }
     };
+
 
     document.getElementById('loadDefaults').onclick = () => {
       $rules.innerHTML = '';
@@ -689,41 +875,58 @@
     };
 
     // 프리셋 불러오기
-    document.getElementById('loadPresets').onclick = () => {
-      $rules.innerHTML = '';
-      // Python FastAPI
-      addRule({
-        name: 'python-fastapi.mdc',
-        desc: 'Python 3.13 + FastAPI defaults',
-        scope: 'Auto',
-        globs: '**/*',
-        body: `# Python/FastAPI Defaults\n\n- Python 3.13, 타입힌트 필수, mypy --strict 통과 기준.\n- FastAPI 스캐폴딩 시 pydantic v2 기준.\n- 동기/비동기 혼용 금지, 라우터/스키마/서비스 레이어 모듈 분리.`
-      });
-      // Docker DevOps
-      addRule({
-        name: 'docker-devops.mdc',
-        desc: 'Dockerfile & DevOps defaults',
-        scope: 'Auto',
-        globs: '**/*',
-        body: `# Docker/DevOps Defaults\n\n- Dockerfile은 멀티스테이지 + alpine 기본.\n- Buildx, 캐시 전략(브랜치 스코프) 반영.\n- docker-compose는 .env.local 전제로 설계. .env 하드 의존 금지.\n- 이미지 최적화(패키지 제거, 압축) 및 --platform 표기 유지.`
-      });
-      // DB Prisma
-      addRule({
-        name: 'db-prisma.mdc',
-        desc: 'Prisma ORM defaults',
-        scope: 'Auto',
-        globs: '**/*',
-        body: `# Prisma Defaults\n\n- 컴포지트 키/관계 명명 규칙 준수.\n- 마이그레이션은 리뷰 후 적용.\n- 다운 마이그레이션 경로 필수.`
-      });
-      // UI Tailwind
-      addRule({
-        name: 'ui-tailwind.mdc',
-        desc: 'Tailwind CSS defaults',
-        scope: 'Auto',
-        globs: '**/*',
-        body: `# Tailwind CSS Defaults\n\n- 사내 iris 팔레트 토큰 우선 사용.\n- 새 색상 제안 금지, 필요 시 토큰 맵핑 테이블 포함.\n- 반응형 디자인과 접근성 고려.`
-      });
+    // document.getElementById('loadPresets').onclick = () => {
+    //   $rules.innerHTML = '';
+    //   // Python FastAPI
+    //   addRule({
+    //     name: 'python-fastapi.mdc',
+    //     desc: 'Python 3.13 + FastAPI defaults',
+    //     scope: 'Auto',
+    //     globs: '**/*',
+    //     body: `# Python/FastAPI Defaults\n\n- Python 3.13, 타입힌트 필수, mypy --strict 통과 기준.\n- FastAPI 스캐폴딩 시 pydantic v2 기준.\n- 동기/비동기 혼용 금지, 라우터/스키마/서비스 레이어 모듈 분리.`
+    //   });
+    //   // Docker DevOps
+    //   addRule({
+    //     name: 'docker-devops.mdc',
+    //     desc: 'Dockerfile & DevOps defaults',
+    //     scope: 'Auto',
+    //     globs: '**/*',
+    //     body: `# Docker/DevOps Defaults\n\n- Dockerfile은 멀티스테이지 + alpine 기본.\n- Buildx, 캐시 전략(브랜치 스코프) 반영.\n- docker-compose는 .env.local 전제로 설계. .env 하드 의존 금지.\n- 이미지 최적화(패키지 제거, 압축) 및 --platform 표기 유지.`
+    //   });
+    //   // DB Prisma
+    //   addRule({
+    //     name: 'db-prisma.mdc',
+    //     desc: 'Prisma ORM defaults',
+    //     scope: 'Auto',
+    //     globs: '**/*',
+    //     body: `# Prisma Defaults\n\n- 컴포지트 키/관계 명명 규칙 준수.\n- 마이그레이션은 리뷰 후 적용.\n- 다운 마이그레이션 경로 필수.`
+    //   });
+    //   // UI Tailwind
+    //   addRule({
+    //     name: 'ui-tailwind.mdc',
+    //     desc: 'Tailwind CSS defaults',
+    //     scope: 'Auto',
+    //     globs: '**/*',
+    //     body: `# Tailwind CSS Defaults\n\n- 사내 iris 팔레트 토큰 우선 사용.\n- 새 색상 제안 금지, 필요 시 토큰 맵핑 테이블 포함.\n- 반응형 디자인과 접근성 고려.`
+    //   });
+    // };
+
+    document.getElementById('loadPresets').onclick = async () => {
+      try {
+        const presets = await fetchPresets(); // 기본 로컬 JSON
+        $rules.innerHTML = '';
+        for (const p of presets) {
+          await addRule({
+            desc: p.desc, scope: p.scope, globs: p.globs,
+            bodyKr: p.bodyKr || '', bodyEn: p.bodyEn || ''
+          });
+        }
+      } catch (e) {
+        console.error(e);
+        alert('프리셋을 불러오지 못했습니다.');
+      }
     };
+
 
     // Start empty
     // addRule({ scope: 'Auto', globs: '**/*' });

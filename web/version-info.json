@@ -1,7 +1,7 @@
 {
-  "last_commit_id": "532e819d5cbef4e8a9be74ab83cd12cb2f850e9c",
-  "last_commit_message": "[skip ci] docs(web): auto-update translated files and indexes\n",
-  "branch": "main",
-  "committed_at": "2025-09-03T00:10:07Z",
-  "generated_at": "2025-09-03T00:11:36Z"
+  "last_commit_id": "0634ab38bec89f7b2ac5616033847d169b3a55f4",
+  "last_commit_message": "feat(web): update web generation script and add index.html\n\n- Modified the web generation script to remove specific files before building.\n- Improved the logic for generating files.json by ensuring unique entries after sorting.\n- Added a new index.html file for the web interface, providing a structured layout and functionality for the Cursor Rules Builder.",
+  "branch": "undefined",
+  "committed_at": "2025-09-03T09:20:55+09:00",
+  "generated_at": "2025-09-03T01:11:10Z"
 }

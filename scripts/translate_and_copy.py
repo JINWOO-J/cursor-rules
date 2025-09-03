@@ -35,7 +35,7 @@ OUT_ROOT = ROOT / "web" / "cursor-rules"
 
 GLOSSARY_PATH = ROOT / "cursor-rules" / "glossary.kr-en.json"  # optional
 API_KEY = os.environ.get("GEMINI_API_KEY")
-MODEL = "gemini-1.5-flash"  # 필요시 pro로 변경
+MODEL = "gemini-2.0-flash"  # 필요시 pro로 변경
 
 if not API_KEY:
     print("GEMINI_API_KEY is not set", file=sys.stderr)

@@ -3,41 +3,43 @@ lang: en
 source_lang: kr
 source_sha: ac9ae8d09e3a127a4d0a9130a7e495831ea1dc7c33044a909e7c6c249d3aab77
 ---
+```markdown
 # Git Style Guide
 
-## Commit Messages
-- Commit messages should use **declarative sentences** and be concise. (Conventional Commits are not used)
-  Example: `Fix PS1 prompt escaping for zsh.`
-- Adhere to the **three-line rule** in the PR description: summary of changes, affected areas, and rollback method.
+## Commit Message
+- Use **sentence-style, concise** commit messages. (Conventional Commits not used)
+  Ex: `Fix PS1 prompt escaping for zsh.`
+- Adhere to the **3-line rule** in PR descriptions: summarize changes, scope of impact, and rollback method.
 
 ## Branch Naming
-- Branch names should use prefixes such as `feature/`, `bugfix/`, `hotfix/` to clarify their purpose.
-- Branch names should only use lowercase English letters, numbers, and hyphens (-).
-  Example: `feature/user-authentication`, `bugfix/login-error-handling`
+- Clarify the purpose of branches by using prefixes such as `feature/`, `bugfix/`, and `hotfix/`.
+- Use only lowercase English letters, numbers, and hyphens (-) in branch names.
+  Ex: `feature/user-authentication`, `bugfix/login-error-handling`
 
 ## Pull Request (PR)
 - The PR title should clearly summarize the changes.
-- The PR description should include:
-  - **Summary of Changes**: Briefly explain what has been changed.
-  - **Affected Areas**: Explain which parts are affected by the changes.
-  - **Rollback Method**: Explain how to rollback in case of problems.
+- The PR description should include the following:
+  - **Summary of Changes**: Briefly describe what you changed.
+  - **Scope of Impact**: Explain which parts are affected by the changes.
+  - **Rollback Method**: Explain how to roll back if a problem occurs.
 
 ## Code Review
-- Reviews should provide **constructive feedback** and focus on the code, not the individual.
-- Clearly explain the **"Why"** and **"How"**.
+- Reviews should be **constructive feedback**, focusing on the code rather than the individual.
+- Clearly explain **"Why"** and **"How"**.
 - Review comments should be **actionable**.
-- **Don't forget to give praise!**
+- **Don't forget to praise.**
 
 ## Development Process
-1.  **Requirement Analysis**: Analyze the context of the Jira ticket.
-2.  **Development Plan**: Analyze the existing code and create a development plan by dividing the implementation steps into 5-6 small steps.  Save the plan in the `docs/[feature]_[summary].md` file. (No code modification at this stage.)
-3.  **Plan Review**: Review the created `[feature]_[summary].md` file. If any modifications are needed, modify them directly or request changes from the Agent.
-4.  **Step-by-Step Implementation**: Request code implementation from the Agent based on `[feature]_[summary].md`. (Requesting in appropriately small steps will improve the quality of the results) (It is recommended to commit & push for each step)
-5.  **Content Review**: Review the modified content using Diff. (You can also review it directly or using other tools such as Claude Code.)
-6.  **Plan Update**: If the development plan is modified during the implementation process, reflect it in the .md file to keep the document and implementation status consistent. (You can also ask the Agent to update the .md file with the actual implemented content after the implementation is complete.)
+1.  **Feature Analysis**: Analyze the context of the Jira ticket.
+2.  **Development Plan Establishment**: Analyze existing code and create a development plan by dividing the implementation steps into small steps of 5 to 6 stages. Save the plan in a `docs/[feature]_[summary].md` file. (Do not modify the code at this stage.)
+3.  **Plan Review**: Review the created `[feature]_[summary].md` file. If there are items that need to be modified, modify them directly or request the Agent to change them.
+4.  **Step-by-Step Implementation**: Request the Agent to implement the code step by step based on `[feature]_[summary].md`. (The quality of the output improves when requested in appropriately small steps.) (Commit & push are recommended in step units.)
+5.  **Content Review**: Review the modified content with Diff. (You can review it directly or with other tools such as Claude Code.)
+6.  **Plan Update**: If the development plan is modified during the implementation process, reflect it in the .md file to keep the document consistent with the implementation status. (After the implementation is complete, you can have the Agent update the .md file with the actual implemented content.)
 7.  **Testing and Static Analysis**: Perform testing and static analysis.
-8.  **PR Creation**: Create a PR after testing and static analysis are complete.
-9.  **Automated Review**: An automated review of the PR will be performed by Claude. (Request if the repo is not configured)
-10. **Review Incorporation**: Check the review content on GitHub and make necessary modifications.
-11. **Partner Review Request**: Request a review from a Partner.
-12. **Merge**: Merge after the Partner approves.
+8.  **PR Creation**: Create a PR when testing and static analysis are complete.
+9.  **Automatic Review**: A review of the PR is automatically performed by Claude. (Request if there is no setting in the repo)
+10. **Review Reflection**: Check the review contents on GitHub and make necessary corrections.
+11. **Partner Review Request**: Request a review from a Partner as well.
+12. **Merge**: Merge when the Partner approves.
+```

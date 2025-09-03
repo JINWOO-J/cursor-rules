@@ -1,0 +1,6 @@
+{
+  "프리즈마": "Prisma",
+  "스키마": "schema",
+  "마이그레이션": "migration",
+  "트랜잭션": "transaction"
+}

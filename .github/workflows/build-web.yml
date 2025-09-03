@@ -41,11 +41,14 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           python scripts/translate_and_copy.py
+          echo "--- staged files under web/cursor-rules ---"
+          find web/cursor-rules -type f -name "*.md" | sort
 
-    
       - name: Generate files.json & version-info.json
         run: |
           bash scripts/generate_web.sh
+          echo "--- files.json preview ---"
+          head -n 50 web/files.json || true
 
     
       - name: Commit & push web/ changes

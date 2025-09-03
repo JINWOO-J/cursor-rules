@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "presets": [
+    {
+      "id": "security-baseline",
+      "name": "00: Security baseline (Always)",
+      "desc": "Organization Security & Secrets Baseline",
+      "scope": "Always",
+      "globs": "**/*",
+      "bodyKr": "# Security & Secrets\n\n- ...",
+      "bodyEn": "# Security & Secrets\n\n- ..."
+    },
+    {
+      "id": "git-style",
+      "name": "10: Git style (Auto)",
+      "desc": "Git commit/pr style (sentence-style)",
+      "scope": "Auto",
+      "globs": "**/*",
+      "bodyKr": "# Git & Commit Style\n\n- ...",
+      "bodyEn": "# Git & Commit Style\n\n- ..."
+    }
+  ]
+}
