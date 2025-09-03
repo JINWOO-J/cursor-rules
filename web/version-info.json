@@ -1,7 +1,0 @@
-{
-  "last_commit_id": "7006a29bf07a260921d8763db963c6022ea4cfb3",
-  "last_commit_message": "fix(web): update file paths in JSON and enhance base path handling\n\n- Updated raw URLs in files.json to use 'undefined' for the repository path.\n- Implemented dynamic base path calculation in index.html to support local development and GitHub Pages.\n- Adjusted fetch calls to use the calculated base path for loading resources correctly.",
-  "branch": "main",
-  "committed_at": "2025-09-03T11:57:02+09:00",
-  "generated_at": "2025-09-03T02:57:54Z"
-}
