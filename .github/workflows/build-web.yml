@@ -51,18 +51,18 @@ jobs:
           echo "--- files.json preview ---"
           head -n 50 web/files.json || true
 
-      - name: Commit & push web/ changes
-        run: |
-          if [ -n "$(git status --porcelain web/)" ]; then
-            git config --local user.email "github-actions[bot]@users.noreply.github.com"
-            git config --local user.name "github-actions[bot]"
-            git add web/
-            git commit -m "[skip ci] docs(web): auto-update translated files and indexes"
-            git pull --rebase || true
-            git push
-          else
-            echo "No changes in web/"
-          fi
+    #   - name: Commit & push web/ changes
+    #     run: |
+    #       if [ -n "$(git status --porcelain web/)" ]; then
+    #         git config --local user.email "github-actions[bot]@users.noreply.github.com"
+    #         git config --local user.name "github-actions[bot]"
+    #         git add web/
+    #         git commit -m "[skip ci] docs(web): auto-update translated files and indexes"
+    #         git pull --rebase || true
+    #         git push
+    #       else
+    #         echo "No changes in web/"
+    #       fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

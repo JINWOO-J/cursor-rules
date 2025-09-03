@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
 echo "Building web/ indexes (preserving web/cursor-rules)"
-rm -f web/files.json web/version-info.json
+
 mkdir -p web
+cp index.html web/index.html
 
 # GH 환경변수 안전 처리
 GITHUB_REF=${GITHUB_REF:-"undefined"}

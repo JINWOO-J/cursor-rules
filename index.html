@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cursor Rules Builder — offline</title>
+  <style>
+    :root { --gap: 12px; --radius: 12px; }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji"; margin: 0; background: #0b1220; color: #e8eefb; }
+    header { padding: 20px; border-bottom: 1px solid #21314f; background: #0e1628; position: sticky; top: 0; z-index: 5; }
+    h1 { margin: 0 0 8px; font-size: 20px; }
+    .sub { opacity: .85; font-size: 13px; }
+    main { padding: 20px; display: grid; gap: var(--gap); max-width: 1100px; margin: 0 auto; }
+    .row { display: flex; flex-wrap: wrap; gap: var(--gap); align-items: center; }
+    .card { background: #101a30; border: 1px solid #22365c; border-radius: var(--radius); padding: 16px; }
+    .toolbar .btn { margin-right: 8px; }
+    .btn { background: #1c2b4b; color: #e8eefb; border: 1px solid #2a4476; padding: 10px 14px; border-radius: 10px; cursor: pointer; font-weight: 600; }
+    .btn:hover { background: #24365f; }
+    .btn.ghost { background: transparent; border-color: #2a4476; }
+    .btn.warn { background: #3b2640; border-color: #6a2b70; }
+    .grid { display: grid; gap: var(--gap); }
+    .fields { display: grid; gap: var(--gap); grid-template-columns: repeat(2, 1fr); }
+    .preset-field { max-width: 300px; }
+    .preset-field select { font-size: 14px; }
+    .preset-field button { width: 100%; }
+    .field { display: grid; gap: 6px; }
+    .field label { font-size: 12px; opacity: .9; }
+    input[type="text"], textarea, select { background: #0c1527; color: #e8eefb; border: 1px solid #29406c; border-radius: 10px; padding: 10px 12px; font: inherit; }
+    textarea { min-height: 140px; width: 100%; }
+    .rule { position: relative; }
+    .rule h3 { margin: 0 0 8px; font-size: 16px; }
+    .rule-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .muted { opacity: .75; font-size: 12px; }
+    .hl { color: #b0c9ff; }
+    .footer-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    code.inline { background: #0c1527; padding: 2px 6px; border-radius: 6px; border:1px solid #22365c; }
+    .out { white-space: pre; background: #0c1527; padding: 12px; border:1px solid #22365c; border-radius: 10px; overflow:auto; }
+    
+    /* 검색 가능한 selectbox 스타일 */
+    .searchable-select {
+      position: relative;
+    }
+    .searchable-select select {
+      display: none;
+    }
+    .select-selected {
+      background-color: #0c1527;
+      border: 1px solid #29406c;
+      border-radius: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+    }
+    .select-selected:after {
+      position: absolute;
+      content: "";
+      top: 50%;
+      right: 10px;
+      width: 0;
+      height: 0;
+      border: 6px solid transparent;
+      border-color: #e8eefb transparent transparent transparent;
+      transform: translateY(-50%);
+    }
+    .select-selected.select-arrow-active:after {
+      border-color: transparent transparent #e8eefb transparent;
+      top: 20%;
+    }
+    .select-items {
+      position: absolute;
+      background-color: #0c1527;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 99;
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #29406c;
+      border-top: none;
+      border-radius: 0 0 10px 10px;
+    }
+    .select-hide {
+      display: none;
+    }
+    .select-items div {
+      padding: 10px 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .select-items div:hover, .same-as-selected {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+    .select-search {
+      padding: 10px 12px;
+      border: none;
+      border-bottom: 1px solid #29406c;
+      background-color: #0c1527;
+      color: #e8eefb;
+      width: 100%;
+      outline: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Cursor Rules Builder <span class="sub">— ".mdc" 파일을 만들어 <code class="inline">.cursor/rules</code>에 붙여넣기</span></h1>
+    <div class="sub">오프라인 단일 HTML. 공통/프로젝트 지침을 입력하고, frontmatter(<code class="inline">alwaysApply</code>, <code class="inline">globs</code>)가 포함된 .mdc를 생성합니다.</div>
+    <div id="version-info" class="sub" style="margin-top: 8px; font-size: 12px; opacity: 0.7;"></div>
+  </header>
+
+  <main>
+    <section class="card toolbar">
+      <div class="row">
+        <button class="btn" id="addRule">+ 규칙 추가</button>
+        <button class="btn" id="loadDefaults">보안 기본 + 프로젝트 템플릿 불러오기</button>
+        <div class="field preset-field">
+          <label>🎯 개발 환경별 프리셋</label>
+          <select id="presetSelector">
+            <option value="">-- 프리셋을 선택하세요 --</option>
+          </select>
+          <!-- <button class="btn" id="loadSelectedPreset" style="margin-top: 5px;">선택한 프리셋 불러오기</button> -->
+        </div>
+        <button class="btn" id="downloadAll">모든 규칙 .mdc 저장</button>
+        <button class="btn ghost" id="clearAll">초기화</button>
+        
+        <!-- files.json 키 선택 옵션 추가 -->
+        <div class="field" style="margin-left: auto;">
+          <label>files.json 키 선택</label>
+          <select id="fileKeySelector">
+            <option value="path" selected>path</option>
+            <option value="raw_url">raw_url</option>
+          </select>
+        </div>
+      </div>
+      <div class="muted" style="margin-top:8px;">TIP: 공통 규칙은 <span class="hl">Scope = Always</span>로 설정하면 전 리포에서 항상 로드됩니다. 프로젝트 특화 규칙은 보통 <span class="hl">Scope = Auto</span>로 두고, <code class="inline">globs</code>는 <code class="inline">**/*</code>로 유지하세요.</div>
+    </section>
+
+    <section id="rules" class="grid"></section>
+
+  </main>
+
+  <template id="ruleTmpl">
+    <div class="card rule">
+      <h3>규칙</h3>
+      <div class="fields">
+        <div class="field">
+          <label>파일명 (.mdc)</label>
+          <div class="searchable-select">
+            <select class="f-name">
+              <option value="">-- 파일을 선택하세요 --</option>
+            </select>
+            <div class="select-selected">-- 파일을 선택하세요 --</div>
+            <div class="select-items select-hide">
+              <input type="text" class="select-search" placeholder="검색...">
+            </div>
+          </div>
+          <button type="button" class="btn" style="margin-top: 5px;" data-action="load-file-content">파일 내용 불러오기</button>
+        </div>
+        <div class="field">
+          <label>설명 (description)</label>
+          <input type="text" class="f-desc" placeholder="Organization Security Baseline" />
+        </div>
+        <div class="field">
+          <label>Scope</label>
+          <select class="f-scope">
+            <option>Always</option>
+            <option selected>Auto</option>
+            <option>Manual</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>globs (Auto/Always에서만 사용, 예: **/*)</label>
+          <input type="text" class="f-globs" placeholder="**/*" />
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:12px;">
+        <label>내용 (Markdown 본문)</label>
+
+        <div class="row" style="gap:8px; margin-bottom:6px;">
+          <span class="muted">좌: 한국어 / 우: English</span>
+          <span class="muted">— “모든 규칙 .mdc 저장”은 <strong>English</strong> 기준</span>
+        </div>
+
+        <div class="row" style="gap:8px;">
+          <div style="flex:1; min-width:300px;">
+            <label class="muted">KR</label>
+            <textarea class="f-body-kr" placeholder="# 제목 (KR) ..."></textarea>
+          </div>
+          <div style="flex:1; min-width:300px;">
+            <label class="muted">EN</label>
+            <textarea class="f-body-en" placeholder="# Title (EN) ..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="rule-actions" style="margin-top:12px;">
+        <button class="btn" data-action="preview">미리보기</button>
+        <button class="btn" data-action="copy">내용 복사</button>
+        <button class="btn" data-action="download">.mdc 저장</button>
+        <button class="btn warn" data-action="remove">삭제</button>
+      </div>
+      <details style="margin-top:10px;">
+        <summary>생성 결과 미리보기</summary>
+        <pre class="out"></pre>
+      </details>
+    </div>
+  </template>
+
+  <script>
+    const $rules = document.getElementById('rules');
+    const tmpl = document.getElementById('ruleTmpl');
+    const fileKeySelector = document.getElementById('fileKeySelector');
+    let currentFileKey = 'path';
+
+    // GitHub Pages 프로젝트 사이트 베이스 경로 동적 계산
+    function getBasePath() {
+      const path = window.location.pathname;
+      // 로컬 개발: "/" 또는 GitHub Pages 프로젝트: "/cursor-rules/"
+      if (path === '/' || path.endsWith('/index.html')) {
+        return './';  // 로컬 개발
+      }
+      // GitHub Pages 프로젝트 사이트 감지
+      if (path.includes('/cursor-rules/')) {
+        return './';  // 현재 디렉토리 기준 상대경로
+      }
+      return './';  // 기본값
+    }
+
+    const BASE_PATH = getBasePath();
+    console.log('Detected base path:', BASE_PATH, 'for location:', window.location.pathname);
+
+    // 페이지 로드 시 파일 목록 가져오기
+    document.addEventListener('DOMContentLoaded', async () => {
+        await loadMdFileList();
+        await loadVersionInfo(); // 버전 정보 로드
+        await initPresetSelector(); // 프리셋 선택기 초기화
+        initSearchableSelects();
+    });
+
+    // 버전 정보 로드 및 표시
+    async function loadVersionInfo() {
+        try {
+            const response = await fetch(BASE_PATH + 'version-info.json');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const versionInfo = await response.json();
+            
+            const versionInfoDiv = document.getElementById('version-info');
+            versionInfoDiv.innerHTML = `
+                <div>Branch: <strong>${versionInfo.branch}</strong></div>
+                <div>Last Commit: <strong>${versionInfo.last_commit_id.substring(0, 7)}</strong> (${new Date(versionInfo.committed_at).toLocaleString()})</div>
+                <div>Message: ${versionInfo.last_commit_message}</div>
+                <div>Generated: ${new Date(versionInfo.generated_at).toLocaleString()}</div>
+            `;
+        } catch (error) {
+            console.error('버전 정보를 불러오는 중 오류 발생:', error);
+            // 오류 발생 시 버전 정보 영역 숨기기
+            const versionInfoDiv = document.getElementById('version-info');
+            versionInfoDiv.style.display = 'none';
+        }
+    }
+
+    // files.json 키 선택 변경 이벤트
+    fileKeySelector.addEventListener('change', (e) => {
+        currentFileKey = e.target.value;
+        loadMdFileList();
+    });
+
+    // 검색 가능한 selectbox 초기화
+    function initSearchableSelects() {
+        const selects = document.querySelectorAll('.searchable-select');
+        selects.forEach(selectDiv => {
+            const selectedDiv = selectDiv.querySelector('.select-selected');
+            const itemsDiv = selectDiv.querySelector('.select-items');
+            const searchInput = itemsDiv.querySelector('.select-search');
+            const selectElement = selectDiv.querySelector('select');
+            
+            selectedDiv.addEventListener('click', (e) => {
+                e.stopPropagation();
+                closeAllSelect(selectedDiv);
+                itemsDiv.classList.toggle('select-hide');
+                selectedDiv.classList.toggle('select-arrow-active');
+            });
+            
+            searchInput.addEventListener('input', (e) => {
+                const filter = e.target.value.toUpperCase();
+                const items = itemsDiv.querySelectorAll('div:not(.select-search)');
+                items.forEach(item => {
+                    const txtValue = item.textContent || item.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        item.style.display = "";
+                    } else {
+                        item.style.display = "none";
+                    }
+                });
+            });
+            
+            const options = selectElement.querySelectorAll('option');
+            options.forEach(option => {
+                if (option.value) {
+                    const item = document.createElement('DIV');
+                    item.innerHTML = option.innerHTML;
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        selectedDiv.innerHTML = option.innerHTML;
+                        selectElement.value = option.value;
+                        closeAllSelect();
+                    });
+                    itemsDiv.appendChild(item);
+                }
+            });
+        });
+        
+        document.addEventListener('click', closeAllSelect);
+    }
+    
+    function closeAllSelect(elmnt) {
+        const arrNo = [];
+        const selectSelected = document.querySelectorAll('.select-selected');
+        const selectItems = document.querySelectorAll('.select-items');
+        for (let i = 0; i < selectSelected.length; i++) {
+            if (elmnt == selectSelected[i]) {
+                arrNo.push(i)
+            } else {
+                selectSelected[i].classList.remove('select-arrow-active');
+            }
+        }
+        for (let i = 0; i < selectItems.length; i++) {
+            if (arrNo.indexOf(i)) {
+                selectItems[i].classList.add('select-hide');
+            }
+        }
+    }
+
+    async function loadMdFileList() {
+      try {
+        const response = await fetch(BASE_PATH + 'files.json');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const files = await response.json();
+        const bases = buildBaseIndex(files);
+
+        // 템플릿의 select(새 규칙용)에 옵션 주입
+        const templateSelects = tmpl.content.querySelectorAll('.searchable-select');
+        templateSelects.forEach(templateSelectDiv => {
+          const selectElement = templateSelectDiv.querySelector('select');
+          const selectedDiv = templateSelectDiv.querySelector('.select-selected');
+          const itemsDiv = templateSelectDiv.querySelector('.select-items');
+
+          while (selectElement.options.length > 1) selectElement.remove(1);
+          const searchInput = itemsDiv.querySelector('.select-search');
+          itemsDiv.innerHTML = '';
+          itemsDiv.appendChild(searchInput);
+
+          bases.forEach(b => {
+            const option = document.createElement('option');
+            option.value = b.base;       // 항상 base path
+            option.textContent = b.base;
+            selectElement.appendChild(option);
+
+            const item = document.createElement('DIV');
+            item.innerHTML = b.base;
+            item.addEventListener('click', (e) => {
+              e.stopPropagation();
+              selectedDiv.innerHTML = b.base;
+              selectElement.value = b.base;
+              closeAllSelect();
+            });
+            itemsDiv.appendChild(item);
+          });
+
+          selectedDiv.innerHTML = "-- 파일을 선택하세요 --";
+          selectElement.value = "";
+        });
+
+        // 이미 추가된 규칙 카드들의 select 갱신
+        document.querySelectorAll('.rule .searchable-select').forEach(selectDiv => {
+          const selectElement = selectDiv.querySelector('select');
+          const selectedDiv = selectDiv.querySelector('.select-selected');
+          const itemsDiv = selectDiv.querySelector('.select-items');
+
+          while (selectElement.options.length > 1) selectElement.remove(1);
+          const searchInput = itemsDiv.querySelector('.select-search');
+          itemsDiv.innerHTML = '';
+          itemsDiv.appendChild(searchInput);
+
+          bases.forEach(b => {
+            const option = document.createElement('option');
+            option.value = b.base;
+            option.textContent = b.base;
+            selectElement.appendChild(option);
+
+            const item = document.createElement('DIV');
+            item.innerHTML = b.base;
+            item.addEventListener('click', (e) => {
+              e.stopPropagation();
+              selectedDiv.innerHTML = b.base;
+              selectElement.value = b.base;
+              closeAllSelect();
+            });
+            itemsDiv.appendChild(item);
+          });
+
+          const currentValue = selectElement.value;
+          if (currentValue) {
+            const currentOption = Array.from(selectElement.options).find(opt => opt.value === currentValue);
+            if (currentOption) selectedDiv.innerHTML = currentOption.textContent;
+          } else {
+            selectedDiv.innerHTML = "-- 파일을 선택하세요 --";
+          }
+        });
+      } catch (error) {
+        console.error('파일 목록을 불러오는 중 오류 발생:', error);
+      }
+    }
+
+
+
+    function escapeYaml(str){
+      if (!str) return '';
+      // escape double quotes, newlines aren't used in description
+      return String(str).replace(/"/g, '\\"');
+    }
+
+    function buildBaseIndex(files){
+      const map = new Map();
+      for (const f of files){
+        const base = f.path.replace(/\.kr\.md$|\.en\.md$/i, '.md');
+        const e = map.get(base) || { base, kr: null, en: null, plain: null };
+        if (/\.kr\.md$/i.test(f.path)) e.kr = f;
+        else if (/\.en\.md$/i.test(f.path)) e.en = f;
+        else e.plain = e.plain || f; // 첫 plain을 보존
+        map.set(base, e);
+      }
+      return Array.from(map.values()).sort((a,b)=>a.base.localeCompare(b.base));
+    }
+
+
+    function buildFrontmatter({desc, scope, globs}){
+      const lines = ['---'];
+      if (desc && desc.trim()) lines.push(`description: "${escapeYaml(desc.trim())}"`);
+      if (scope === 'Always') lines.push('alwaysApply: true');
+      if ((scope === 'Always' || scope === 'Auto') && globs && globs.trim()){
+        lines.push('globs:');
+        // support comma or whitespace separated patterns
+        const parts = globs.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+        for (const p of parts){ lines.push(`  - "${p.replace(/"/g, '\\"')}"`); }
+      }
+      lines.push('---');
+      return lines.join('\n');
+    }
+
+    function ruleFromCard(card){
+      return {
+        name: card.querySelector('.f-name').value.trim(),
+        desc: card.querySelector('.f-desc').value,
+        scope: card.querySelector('.f-scope').value,
+        globs: card.querySelector('.f-globs').value,
+        bodyKr: card.querySelector('.f-body-kr').value,
+        bodyEn: card.querySelector('.f-body-en').value
+      };
+    }
+
+    function buildMDC({name, desc, scope, globs, bodyKr, bodyEn}){
+      const fm = buildFrontmatter({desc, scope, globs});
+      const body = (bodyEn && bodyEn.trim()) || (bodyKr && bodyKr.trim()) || '';
+      return fm + '\n\n' + body + '\n';
+    }
+
+
+    function setPreview(card, text){ card.querySelector('.out').textContent = text; }
+
+    function downloadText(filename, text){
+      const blob = new Blob([text], {type: 'text/plain'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename || 'rule.mdc';
+      document.body.appendChild(a); a.click();
+      a.remove(); URL.revokeObjectURL(url);
+    }
+
+    async function addRule(prefill){
+      const node = tmpl.content.firstElementChild.cloneNode(true);
+      if (prefill){
+        node.querySelector('.f-desc').value = prefill.desc || '';
+        node.querySelector('.f-scope').value = prefill.scope || 'Auto';
+        node.querySelector('.f-globs').value = prefill.globs || '';
+        node.querySelector('.f-body-kr').value = prefill.bodyKr || prefill.body || '';
+        node.querySelector('.f-body-en').value = prefill.bodyEn || '';
+      }
+      // 파일 목록 로드
+      await loadMdFileListForNewRule(node);
+      
+      // 검색 가능한 selectbox 초기화
+      initSearchableSelectForRule(node);
+      
+      // basePath가 있으면 파일명 select box를 자동으로 설정
+      if (prefill && prefill.basePath) {
+        const selectDiv = node.querySelector('.searchable-select');
+        const selectElement = selectDiv.querySelector('select');
+        const selectedDiv = selectDiv.querySelector('.select-selected');
+        
+        // basePath 값으로 select 설정
+        selectElement.value = prefill.basePath;
+        selectedDiv.innerHTML = prefill.basePath;
+        
+        console.log(`Set file selection to: ${prefill.basePath}`);
+      }
+      
+      node.addEventListener('click', async (e) => {
+        const action = e.target.dataset.action;
+        if (!action) return;
+        const data = ruleFromCard(node);
+        if (action === 'preview'){
+          const out = buildMDC(data);
+          setPreview(node, out);
+        } else if (action === 'copy'){
+          const out = buildMDC(data);
+          navigator.clipboard.writeText(out).then(() => {
+            e.target.textContent = '복사됨';
+            setTimeout(() => e.target.textContent = '내용 복사', 1200);
+          });
+
+        } else if (action === 'download'){
+          const out = buildMDC(data);
+          const name = mdcNameFromSelectedValue(node.querySelector('.f-name').value);          
+          downloadText(name, out);        
+
+        } else if (action === 'remove'){
+          node.remove();
+        } else if (action === 'load-file-content') {
+          const basePath = node.querySelector('.f-name').value; // 항상 cursor-rules/.../foo.md
+          if (!basePath) {
+            alert('파일을 먼저 선택하세요.');
+            return;
+          }
+          try {
+            const fileListResponse = await fetch(BASE_PATH + 'files.json');
+            if (!fileListResponse.ok) throw new Error(`HTTP error! status: ${fileListResponse.status}`);
+            const files = await fileListResponse.json();
+
+            // 베이스에서 KR/EN 후보 경로 만들기
+            const krPath = basePath.replace(/\.md$/i, '.kr.md');
+            const enPath = basePath.replace(/\.md$/i, '.en.md');
+
+            // files.json에서 엔트리 찾기 (없으면 fallback: plain/md를 lang 단서로)
+            const krEntry =
+              files.find(f => f.path === krPath) ||
+              files.find(f => f.path === basePath && (f.lang === 'kr' || f.lang === 'und'));
+
+            const enEntry =
+              files.find(f => f.path === enPath) ||
+              files.find(f => f.path === basePath && f.lang === 'en');
+
+            const urlFor = (entry) => {
+              if (!entry) return null;
+              if (fileKeySelector.value === 'path') {
+                // path 모드일 때 베이스 경로 추가
+                return BASE_PATH + entry.path;
+              }
+              // raw_url 모드일 때는 GitHub URL 그대로 사용
+              return entry.raw_url;
+            };
+
+            // 병렬 로드
+            const [krContent, enContent] = await Promise.all([
+              (async () => {
+                const u = urlFor(krEntry);
+                if (!u) return '';
+                const r = await fetch(u);
+                if (!r.ok) throw new Error(`HTTP error (KR)! status: ${r.status}`);
+                return await r.text();
+              })(),
+              (async () => {
+                const u = urlFor(enEntry);
+                if (!u) return '';
+                const r = await fetch(u);
+                if (!r.ok) throw new Error(`HTTP error (EN)! status: ${r.status}`);
+                return await r.text();
+              })(),
+            ]);
+
+            // 좌/우 채우기 (있을 때만 갱신)
+            if (krContent) node.querySelector('.f-body-kr').value = krContent;
+            if (enContent) node.querySelector('.f-body-en').value = enContent;
+
+            // 설명/표시 업데이트
+            const mdcFilename = basePath.split('/').pop().replace(/\.md$/i, '.mdc');
+            const descBase = mdcFilename.replace(/\.mdc$/,'').replace(/[-_]/g,' ');
+            node.querySelector('.f-desc').value =
+              descBase.charAt(0).toUpperCase() + descBase.slice(1) + ` (from ${basePath})`;
+
+            const selectDiv = node.querySelector('.searchable-select');
+            selectDiv.querySelector('.select-selected').innerHTML = basePath;
+          } catch (error) {
+            console.error('파일 내용을 불러오는 중 오류 발생:', error);
+            alert('파일 내용을 불러오는 데 실패했습니다.');
+          }
+        }
+
+     
+      });
+      $rules.appendChild(node);
+    }
+
+    function mdcNameFromSelectedValue(v){
+      if (!v) return 'rule.mdc';
+      const base = v.split('/').pop(); // path or raw_url 모두 마지막 토큰 사용
+      return base.replace(/\.md$/i, '.mdc') || 'rule.mdc';
+    }
+
+
+    // 새로운 규칙 카드에 파일 목록 로드 (정적 JSON 파일 사용)
+    
+    async function loadMdFileListForNewRule(ruleNode) {
+      try {
+        const response = await fetch(BASE_PATH + 'files.json');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const files = await response.json();
+        const bases = buildBaseIndex(files);
+
+        const selectDiv = ruleNode.querySelector('.searchable-select');
+        const selectElement = selectDiv.querySelector('select');
+        const selectedDiv = selectDiv.querySelector('.select-selected');
+        const itemsDiv = selectDiv.querySelector('.select-items');
+
+        if (!selectElement) return;
+
+        while (selectElement.options.length > 1) selectElement.remove(1);
+        const searchInput = itemsDiv.querySelector('.select-search');
+        itemsDiv.innerHTML = '';
+        itemsDiv.appendChild(searchInput);
+
+        bases.forEach(b => {
+          const option = document.createElement('option');
+          option.value = b.base;       // 항상 base path
+          option.textContent = b.base;
+          selectElement.appendChild(option);
+
+          const item = document.createElement('DIV');
+          item.innerHTML = b.base;
+          item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectedDiv.innerHTML = b.base;
+            selectElement.value = b.base;
+            closeAllSelect();
+          });
+          itemsDiv.appendChild(item);
+        });
+
+        selectedDiv.innerHTML = "-- 파일을 선택하세요 --";
+        selectElement.value = "";
+      } catch (error) {
+        console.error('파일 목록을 불러오는 중 오류 발생:', error);
+      }
+    }
+
+    
+    // 새로운 규칙 카드에 대한 검색 가능한 selectbox 초기화
+    function initSearchableSelectForRule(ruleNode) {
+        const selectDiv = ruleNode.querySelector('.searchable-select');
+        if (!selectDiv) return;
+        
+        const selectedDiv = selectDiv.querySelector('.select-selected');
+        const itemsDiv = selectDiv.querySelector('.select-items');
+        const searchInput = itemsDiv.querySelector('.select-search');
+        const selectElement = selectDiv.querySelector('select');
+        
+        selectedDiv.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeAllSelect(selectedDiv);
+            itemsDiv.classList.toggle('select-hide');
+            selectedDiv.classList.toggle('select-arrow-active');
+        });
+        
+        searchInput.addEventListener('input', (e) => {
+            const filter = e.target.value.toUpperCase();
+            const items = itemsDiv.querySelectorAll('div:not(.select-search)');
+            items.forEach(item => {
+                const txtValue = item.textContent || item.innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    item.style.display = "";
+                } else {
+                    item.style.display = "none";
+                }
+            });
+        });
+        
+        const options = selectElement.querySelectorAll('option');
+        options.forEach(option => {
+            if (option.value) {
+                const item = document.createElement('DIV');
+                item.innerHTML = option.innerHTML;
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectedDiv.innerHTML = option.innerHTML;
+                    selectElement.value = option.value;
+                    closeAllSelect();
+                });
+                itemsDiv.appendChild(item);
+            }
+        });
+    }
+
+    // async function fetchPresets(url = 'cursor-rules/presets.json') {
+    //   const res = await fetch(url);
+    //   if (!res.ok) throw new Error(`Failed to load presets: ${res.status}`);
+    //   const json = await res.json();
+    //   if (!Array.isArray(json.presets)) throw new Error('Invalid presets schema');
+    //   return json.presets;
+    // }
+
+
+    // async function loadDynamicPresetsFromFiles() {
+    //   const res = await fetch('files.json');
+    //   if (!res.ok) throw new Error('files.json load failed');
+    //   const files = await res.json();
+    //   const bases = buildBaseIndex(files); // 이미 구현됨
+
+    //   // UI: 선택 모달 없이 바로 카드 생성 예시
+    //   $rules.innerHTML = '';
+    //   for (const b of bases) {
+    //     await addRule({
+    //       desc: (b.base.split('/').pop().replace(/\.md$/,'')).replace(/[-_]/g,' ').replace(/^\w/, c => c.toUpperCase()),
+    //       scope: 'Auto',
+    //       globs: '**/*',
+    //       bodyKr: '', bodyEn: '' // 버튼으로 ‘파일 내용 불러오기’ 누르면 채워짐
+    //     });
+    //   }
+    // }
+    function globToRegExp(glob){
+      // 매우 단순한 glob: **, *, ? 만 지원
+      const re = glob
+        .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+        .replace(/\*\*/g, '§§DOUBLESTAR§§')
+        .replace(/\*/g, '[^/]*')
+        .replace(/\?/g, '[^/]')
+        .replace(/§§DOUBLESTAR§§/g, '.*');
+      return new RegExp('^' + re + '$');
+    }
+
+    function matchGlobs(path, include = ['**/*'], exclude = []){
+      const incOk = include.length === 0 || include.some(g => globToRegExp(g).test(path));
+      const excOk = exclude.every(g => !globToRegExp(g).test(path));
+      return incOk && excOk;
+    }
+    // 이미 있으나, 여기 다시 명시 (bases: [{base,kr,en,plain}])
+    function buildBaseIndex(files){
+      const map = new Map();
+      for (const f of files){
+        const base = f.path.replace(/\.kr\.md$|\.en\.md$/i, '.md');
+        const e = map.get(base) || { base, kr: null, en: null, plain: null };
+        if (/\.kr\.md$/i.test(f.path)) e.kr = f;
+        else if (/\.en\.md$/i.test(f.path)) e.en = f;
+        else e.plain = e.plain || f;
+        map.set(base, e);
+      }
+      return Array.from(map.values()).sort((a,b)=>a.base.localeCompare(b.base));
+    }
+
+    async function fetchPresets(url = 'cursor-rules/presets.json') {
+      const res = await fetch(BASE_PATH + url, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`Failed to load presets: ${res.status}`);
+      const json = await res.json();
+      if (!Array.isArray(json.presets)) throw new Error('Invalid presets schema');
+      return {
+        presets: json.presets,
+        categories: json.categories || {},
+        version: json.version || 1
+      };
+    }
+
+    async function fetchFilesJson(){
+      const res = await fetch(BASE_PATH + 'files.json', { cache: 'no-store' });
+      if (!res.ok) throw new Error(`files.json load failed: ${res.status}`);
+      return await res.json();
+    }
+
+    function urlFor(entry){
+      if (!entry) return null;
+      if (fileKeySelector.value === 'path') {
+        // path 모드일 때 베이스 경로 추가
+        return BASE_PATH + entry.path;
+      }
+      // raw_url 모드일 때는 GitHub URL 그대로 사용
+      return entry.raw_url;
+    }
+
+    // basePath(…/foo.md) → [krContent, enContent] 로드
+    async function loadPairForBase(files, basePath){
+      const krPath = basePath.replace(/\.md$/i, '.kr.md');
+      const enPath = basePath.replace(/\.md$/i, '.en.md');
+
+      const krEntry =
+        files.find(f => f.path === krPath) ||
+        files.find(f => f.path === basePath && (f.lang === 'kr' || f.lang === 'und'));
+
+      const enEntry =
+        files.find(f => f.path === enPath) ||
+        files.find(f => f.path === basePath && f.lang === 'en');
+
+      const [krContent, enContent] = await Promise.all([
+        (async()=>{ const u=urlFor(krEntry); if(!u) return ''; const r=await fetch(u); if(!r.ok) throw new Error(`KR fetch ${r.status}`); return r.text(); })(),
+        (async()=>{ const u=urlFor(enEntry); if(!u) return ''; const r=await fetch(u); if(!r.ok) throw new Error(`EN fetch ${r.status}`); return r.text(); })()
+      ]);
+      return [await krContent, await enContent];
+    }
+
+    async function expandPresetToBases(preset, bases){
+      // bases: [{ base, kr, en, plain }], base 예: 'cursor-rules/common/stacks/node-react.md'
+      const include = Array.isArray(preset.include) ? preset.include : (preset.type === 'query' ? ['**/*.md'] : []);
+      const exclude = Array.isArray(preset.exclude) ? preset.exclude : [];
+
+      const matches = (basePath) => {
+        const rel = basePath.replace(/^cursor-rules\//, ''); // 상대경로
+        const incOk = (
+          include.length === 0 ||
+          include.some(g => matchGlobs(basePath, [g], []) || matchGlobs(rel, [g], []))
+        );
+        const excOk = (
+          exclude.length === 0 ||
+          exclude.every(g => !matchGlobs(basePath, [g], []) && !matchGlobs(rel, [g], []))
+        );
+        return incOk && excOk;
+      };
+
+      // type: 'base'
+      if (preset.type === 'base' && typeof preset.base === 'string'){
+        const wanted = preset.base.replace(/\.kr\.md$|\.en\.md$/i, '.md');
+        const abs = wanted.startsWith('cursor-rules/') ? wanted : ('cursor-rules/' + wanted);
+        const found = bases.find(b => b.base === abs);
+        const list = found ? [found.base] : [];
+        console.debug('[preset:base]', preset.id, '→', list);
+        return list;
+      }
+
+      // type: 'query'
+      if (preset.type === 'query'){
+        const list = bases
+          .map(b => b.base)
+          .filter(basePath => matches(basePath));
+        console.debug('[preset:query]', preset.id, 'matched', list.length);
+        return list;
+      }
+
+      return [];
+    }
+
+    console.log('----loadPresets');
+    console.debug('----DEBUG --- loadPresets');
+
+    // 프리셋 선택기 초기화
+    async function initPresetSelector() {
+      try {
+        const presetData = await fetchPresets();
+        const selector = document.getElementById('presetSelector');
+        
+        // 기존 옵션들 제거 (첫 번째 제외)
+        while (selector.options.length > 1) {
+          selector.remove(1);
+        }
+        
+        // 카테고리별로 프리셋 그룹화
+        const groupedPresets = {};
+        presetData.presets.forEach(preset => {
+          const category = preset.category || 'other';
+          if (!groupedPresets[category]) {
+            groupedPresets[category] = [];
+          }
+          groupedPresets[category].push(preset);
+        });
+        
+        // 카테고리별로 옵션 그룹 생성
+        Object.keys(groupedPresets).forEach(categoryId => {
+          const category = presetData.categories[categoryId];
+          const optgroup = document.createElement('optgroup');
+          optgroup.label = category ? category.name : categoryId;
+          
+          groupedPresets[categoryId].forEach(preset => {
+            const option = document.createElement('option');
+            option.value = preset.id;
+            option.textContent = preset.name;
+            option.title = preset.description;
+            optgroup.appendChild(option);
+          });
+          
+          selector.appendChild(optgroup);
+        });
+        
+        console.log('프리셋 선택기 초기화 완료:', presetData.presets.length, '개 프리셋');
+      } catch (e) {
+        console.error('프리셋 선택기 초기화 실패:', e);
+      }
+    }
+
+    // 선택된 프리셋 로딩
+
+    async function loadPresetFromSelector() {
+        const selector = document.getElementById('presetSelector');
+        const selectedPresetId = selector.value;
+
+        if (!selectedPresetId) {
+          // 아무 것도 선택 안 되었으면 리턴 (알림은 생략)
+          return;
+        }
+
+        try {
+          const [presetData, files] = await Promise.all([fetchPresets(), fetchFilesJson()]);
+          const selectedPreset = presetData.presets.find(p => p.id === selectedPresetId);
+
+          if (!selectedPreset) {
+            alert('선택된 프리셋을 찾을 수 없습니다.');
+            return;
+          }
+
+          const basesIndex = buildBaseIndex(files);
+
+          // 전체 초기화
+          $rules.innerHTML = '';
+
+          // 선택된 프리셋을 base 목록으로 전개
+          const basePaths = await expandPresetToBases(selectedPreset, basesIndex);
+
+          if (basePaths.length === 0) {
+            alert('프리셋에 해당하는 파일을 찾을 수 없습니다.');
+            return;
+          }
+
+          // 각 base에 대해 KR/EN 로드 → 카드 생성
+          for (const basePath of basePaths) {
+            const [krContent, enContent] = await loadPairForBase(files, basePath);
+
+            const scope = selectedPreset.scope || (selectedPreset.defaults && selectedPreset.defaults.scope) || 'Auto';
+            const globs = selectedPreset.globs || (selectedPreset.defaults && selectedPreset.defaults.globs) || '**/*';
+
+            let desc = selectedPreset.desc || (selectedPreset.defaults && selectedPreset.defaults.desc) || '';
+            if (!desc) {
+              const baseName = basePath.split('/').pop().replace(/\.md$/,'').replace(/[-_]/g,' ');
+              const prefix = (selectedPreset.defaults && selectedPreset.defaults.descPrefix) ? selectedPreset.defaults.descPrefix : '';
+              desc = (prefix + baseName).replace(/^\w/, c => c.toUpperCase());
+            }
+
+            await addRule({
+              desc,
+              scope,
+              globs,
+              bodyKr: krContent || '',
+              bodyEn: enContent || '',
+              basePath: basePath
+            });
+          }
+
+          console.log(`프리셋 '${selectedPreset.name}' 로딩 완료:`, basePaths.length, '개 규칙');
+        } catch (e) {
+          console.error('프리셋 로딩 실패:', e);
+          alert('프리셋을 불러오는데 실패했습니다.');
+        }
+      }    
+
+    // document.getElementById('loadSelectedPreset').onclick = async () => {
+    //   const selector = document.getElementById('presetSelector');
+    //   const selectedPresetId = selector.value;
+      
+    //   if (!selectedPresetId) {
+    //     alert('프리셋을 먼저 선택해주세요.');
+    //     return;
+    //   }
+      
+    //   try {
+    //     const [presetData, files] = await Promise.all([fetchPresets(), fetchFilesJson()]);
+    //     const selectedPreset = presetData.presets.find(p => p.id === selectedPresetId);
+        
+    //     if (!selectedPreset) {
+    //       alert('선택된 프리셋을 찾을 수 없습니다.');
+    //       return;
+    //     }
+        
+    //     const basesIndex = buildBaseIndex(files);
+        
+    //     // 전체 초기화
+    //     $rules.innerHTML = '';
+        
+    //     // 선택된 프리셋을 base 목록으로 전개
+    //     const basePaths = await expandPresetToBases(selectedPreset, basesIndex);
+        
+    //     if (basePaths.length === 0) {
+    //       alert('프리셋에 해당하는 파일을 찾을 수 없습니다.');
+    //       return;
+    //     }
+        
+    //     // 각 base에 대해 KR/EN 로드 → 카드 생성
+    //     for (const basePath of basePaths) {
+    //       const [krContent, enContent] = await loadPairForBase(files, basePath);
+          
+    //       const scope = selectedPreset.scope || (selectedPreset.defaults && selectedPreset.defaults.scope) || 'Auto';
+    //       const globs = selectedPreset.globs || (selectedPreset.defaults && selectedPreset.defaults.globs) || '**/*';
+          
+    //       let desc = selectedPreset.desc || (selectedPreset.defaults && selectedPreset.defaults.desc) || '';
+    //       if (!desc) {
+    //         const baseName = basePath.split('/').pop().replace(/\.md$/,'').replace(/[-_]/g,' ');
+    //         const prefix = (selectedPreset.defaults && selectedPreset.defaults.descPrefix) ? selectedPreset.defaults.descPrefix : '';
+    //         desc = (prefix + baseName).replace(/^\w/, c => c.toUpperCase());
+    //       }
+          
+    //       await addRule({
+    //         desc,
+    //         scope,
+    //         globs,
+    //         bodyKr: krContent || '',
+    //         bodyEn: enContent || '',
+    //         basePath: basePath
+    //       });
+    //     }
+        
+    //     console.log(`프리셋 '${selectedPreset.name}' 로딩 완료:`, basePaths.length, '개 규칙');
+    //   } catch (e) {
+    //     console.error('프리셋 로딩 실패:', e);
+    //     alert('프리셋을 불러오는데 실패했습니다.');
+    //   }
+    // };
+
+    // document.getElementById('loadSelectedPreset').onclick = loadPresetFromSelector;
+
+    // 🔄 셀렉트가 변경될 때도 자동 로드
+    document.getElementById('presetSelector').addEventListener('change', loadPresetFromSelector);
+
+    // Toolbar actions
+    document.getElementById('addRule').onclick = () => addRule({ scope: 'Auto', globs: '**/*' });
+
+    document.getElementById('clearAll').onclick = () => { $rules.innerHTML = ''; };
+
+    document.getElementById('downloadAll').onclick = () => {
+      const cards = Array.from($rules.querySelectorAll('.rule'));
+      if (!cards.length){ alert('규칙이 없습니다. 먼저 추가하세요.'); return; }
+      for (const card of cards){
+        const data = ruleFromCard(card);
+        const out = buildMDC(data);
+        const name = mdcNameFromSelectedValue(card.querySelector('.f-name').value);
+        downloadText(name, out);
+      }
+    };
+
+
+    document.getElementById('loadDefaults').onclick = () => {
+      $rules.innerHTML = '';
+      // 00: Security baseline (Always)
+      addRule({
+        name: '00-security.mdc',
+        desc: 'Organization Security & Secrets Baseline',
+        scope: 'Always',
+        globs: '**/*',
+        body: `# Security & Secrets\n\n- 시크릿/토큰/자격증명/PII는 출력·복사·하드코딩 금지.\n- 의심 문자열(AccessKey, PrivateKey, JWT 등) 감지 시 즉시 중단·마스킹.\n- 안전한 대체: 환경변수/시크릿 매니저 사용 가이드 제시.\n- 외부 전송/학습 추정 작업은 보류하고 내부 대체 절차 제안.\n- 커밋/PR 시 비공개 정보가 포함되지 않도록 점검 체크리스트 제공.`
+      });
+      // 10: Git style (Auto)
+      addRule({
+        name: '10-git-style.mdc',
+        desc: 'Git commit/pr style (sentence-style)',
+        scope: 'Auto',
+        globs: '**/*',
+        body: `# Git & Commit Style\n\n- 커밋 메시지는 문장형·간결체(Conventional 미사용).\n  - 예: 'Fix PS1 prompt escaping for zsh.'\n- PR 본문 3줄 규약: 변경 요약 / 영향 범위 / 롤백 방법.\n- 대규모 변경 시 마이그레이션 단계와 리스크 요약.`
+      });
+      // 20: Stack example (Auto)
+      addRule({
+        name: '20-node-react.mdc',
+        desc: 'Node 22 + React/Vite defaults',
+        scope: 'Auto',
+        globs: '**/*',
+        body: `# Node/React/Vite Defaults\n\n- Node 22, ESLint + typescript-eslint 사용.\n- Route-level dynamic import, 폰트/아이콘은 WOFF2 우선.\n- 번들 전/후 비교표와 선택 기준 3줄 요약.`
+      });
+      // 90: Project overrides (Auto)
+      addRule({
+        name: '90-project-overrides.mdc',
+        desc: 'This repository specific rules (overrides/additions)',
+        scope: 'Auto',
+        globs: '**/*',
+        body: `# Project Overrides\n\n- 이 리포지토리의 폴더 구조·환경변수 키·엔드포인트 등 구체화를 여기에 기록.\n- 공통 규칙을 약화시키는 내용은 금지(보안 섹션 override deny).`
+      });
+    };
+
+    // 프리셋 불러오기
+    // document.getElementById('loadPresets').onclick = () => {
+    //   $rules.innerHTML = '';
+    //   // Python FastAPI
+    //   addRule({
+    //     name: 'python-fastapi.mdc',
+    //     desc: 'Python 3.13 + FastAPI defaults',
+    //     scope: 'Auto',
+    //     globs: '**/*',
+    //     body: `# Python/FastAPI Defaults\n\n- Python 3.13, 타입힌트 필수, mypy --strict 통과 기준.\n- FastAPI 스캐폴딩 시 pydantic v2 기준.\n- 동기/비동기 혼용 금지, 라우터/스키마/서비스 레이어 모듈 분리.`
+    //   });
+    //   // Docker DevOps
+    //   addRule({
+    //     name: 'docker-devops.mdc',
+    //     desc: 'Dockerfile & DevOps defaults',
+    //     scope: 'Auto',
+    //     globs: '**/*',
+    //     body: `# Docker/DevOps Defaults\n\n- Dockerfile은 멀티스테이지 + alpine 기본.\n- Buildx, 캐시 전략(브랜치 스코프) 반영.\n- docker-compose는 .env.local 전제로 설계. .env 하드 의존 금지.\n- 이미지 최적화(패키지 제거, 압축) 및 --platform 표기 유지.`
+    //   });
+    //   // DB Prisma
+    //   addRule({
+    //     name: 'db-prisma.mdc',
+    //     desc: 'Prisma ORM defaults',
+    //     scope: 'Auto',
+    //     globs: '**/*',
+    //     body: `# Prisma Defaults\n\n- 컴포지트 키/관계 명명 규칙 준수.\n- 마이그레이션은 리뷰 후 적용.\n- 다운 마이그레이션 경로 필수.`
+    //   });
+    //   // UI Tailwind
+    //   addRule({
+    //     name: 'ui-tailwind.mdc',
+    //     desc: 'Tailwind CSS defaults',
+    //     scope: 'Auto',
+    //     globs: '**/*',
+    //     body: `# Tailwind CSS Defaults\n\n- 사내 iris 팔레트 토큰 우선 사용.\n- 새 색상 제안 금지, 필요 시 토큰 맵핑 테이블 포함.\n- 반응형 디자인과 접근성 고려.`
+    //   });
+    // };
+
+    // document.getElementById('loadPresets').onclick = async () => {
+    //   try {
+    //     const presets = await fetchPresets(); // 기본 로컬 JSON
+    //     $rules.innerHTML = '';
+    //     for (const p of presets) {
+    //       await addRule({
+    //         desc: p.desc, scope: p.scope, globs: p.globs,
+    //         bodyKr: p.bodyKr || '', bodyEn: p.bodyEn || ''
+    //       });
+    //     }
+    //   } catch (e) {
+    //     console.error(e);
+    //     alert('프리셋을 불러오지 못했습니다.');
+    //   }
+    // };
+
+
+    // Start empty
+    // addRule({ scope: 'Auto', globs: '**/*' });
+  </script>
+</body>
+</html>

@@ -39,3 +39,4 @@ node_modules/
 __pycache__/
 PRD.md
 QWEN.md
+web/*
