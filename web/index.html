@@ -230,7 +230,9 @@
     }
 
     const BASE_PATH = getBasePath();
+    const IS_GITHUB_PAGES = window.location.pathname.includes('/cursor-rules/');
     console.log('Detected base path:', BASE_PATH, 'for location:', window.location.pathname);
+    console.log('GitHub Pages project site:', IS_GITHUB_PAGES);
 
     // 페이지 로드 시 파일 목록 가져오기
     document.addEventListener('DOMContentLoaded', async () => {
@@ -558,8 +560,17 @@
             const urlFor = (entry) => {
               if (!entry) return null;
               if (fileKeySelector.value === 'path') {
-                // path 모드일 때 베이스 경로 추가
-                return BASE_PATH + entry.path;
+                let path = entry.path;
+                
+                // GitHub Pages 프로젝트 사이트에서 경로 보정
+                if (window.location.pathname.includes('/cursor-rules/')) {
+                  // "cursor-rules/xxx.md" -> "cursor-rules/cursor-rules/xxx.md"
+                  if (path.startsWith('cursor-rules/') && !path.startsWith('cursor-rules/cursor-rules/')) {
+                    path = 'cursor-rules/' + path;
+                  }
+                }
+                
+                return BASE_PATH + path;
               }
               // raw_url 모드일 때는 GitHub URL 그대로 사용
               return entry.raw_url;
@@ -782,8 +793,21 @@
     function urlFor(entry){
       if (!entry) return null;
       if (fileKeySelector.value === 'path') {
-        // path 모드일 때 베이스 경로 추가
-        return BASE_PATH + entry.path;
+        let path = entry.path;
+        const originalPath = path;
+        
+        // GitHub Pages 프로젝트 사이트에서 경로 보정
+        if (window.location.pathname.includes('/cursor-rules/')) {
+          // "cursor-rules/xxx.md" -> "cursor-rules/cursor-rules/xxx.md"
+          if (path.startsWith('cursor-rules/') && !path.startsWith('cursor-rules/cursor-rules/')) {
+            path = 'cursor-rules/' + path;
+            console.log(`Path adjusted: ${originalPath} -> ${path}`);
+          }
+        }
+        
+        const finalUrl = BASE_PATH + path;
+        console.log(`urlFor: ${originalPath} -> ${finalUrl}`);
+        return finalUrl;
       }
       // raw_url 모드일 때는 GitHub URL 그대로 사용
       return entry.raw_url;
