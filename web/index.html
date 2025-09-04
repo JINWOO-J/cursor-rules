@@ -529,11 +529,8 @@
         node.querySelector('.f-body-kr').value = prefill.bodyKr || prefill.body || '';
         node.querySelector('.f-body-en').value = prefill.bodyEn || '';
       }
-      // 파일 목록 로드
+      // 파일 목록 로드 (이미 이벤트 리스너 포함)
       await loadMdFileListForNewRule(node);
-      
-      // 검색 가능한 selectbox 초기화
-      initSearchableSelectForRule(node);
       
       // basePath가 있으면 파일명 select box를 자동으로 설정
       if (prefill && prefill.basePath) {
@@ -684,9 +681,24 @@
         if (!selectElement) return;
 
         while (selectElement.options.length > 1) selectElement.remove(1);
-        const searchInput = itemsDiv.querySelector('.select-search');
-        itemsDiv.innerHTML = '';
-        itemsDiv.appendChild(searchInput);
+        
+        // 기존 searchInput 보존하거나 새로 생성
+        let searchInput = itemsDiv.querySelector('.select-search');
+        if (!searchInput) {
+          searchInput = document.createElement('input');
+          searchInput.type = 'text';
+          searchInput.className = 'select-search';
+          searchInput.placeholder = '검색...';
+        }
+        
+        // itemsDiv 내용 초기화 (기존 아이템만 제거, searchInput은 보존)
+        const existingItems = itemsDiv.querySelectorAll('div:not(.select-search)');
+        existingItems.forEach(item => item.remove());
+        
+        // searchInput이 없다면 맨 위에 추가
+        if (!itemsDiv.querySelector('.select-search')) {
+          itemsDiv.insertBefore(searchInput, itemsDiv.firstChild);
+        }
 
         bases.forEach(b => {
           const option = document.createElement('option');
@@ -710,6 +722,59 @@
           itemsDiv.appendChild(item);
         });
 
+        // 새로운 규칙 카드용 이벤트 리스너 설정 (중복 방지)
+        if (!selectDiv.dataset.listenersAdded) {
+          selectDiv.dataset.listenersAdded = 'true';
+          
+          selectedDiv.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeAllSelect(selectedDiv);
+            itemsDiv.classList.toggle('select-hide');
+            selectedDiv.classList.toggle('select-arrow-active');
+            if (!itemsDiv.classList.contains('select-hide')) {
+              setTimeout(() => {
+                searchInput.value = '';
+                searchInput.focus();
+                const items = itemsDiv.querySelectorAll('div:not(.select-search)');
+                items.forEach(item => item.style.display = "");
+              }, 100);
+            }
+          });
+          
+          searchInput.addEventListener('click', (e) => {
+            e.stopPropagation();
+          });
+          
+          searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              e.stopPropagation();
+              const visibleItems = Array.from(itemsDiv.querySelectorAll('div:not(.select-search)'))
+                .filter(item => item.style.display !== 'none');
+              if (visibleItems.length > 0) {
+                visibleItems[0].click();
+              }
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              e.stopPropagation();
+              closeAllSelect();
+            }
+          });
+          
+          searchInput.addEventListener('input', (e) => {
+            const filter = e.target.value.toUpperCase();
+            const items = itemsDiv.querySelectorAll('div:not(.select-search)');
+            items.forEach(item => {
+              const txtValue = item.textContent || item.innerText;
+              if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                item.style.display = "";
+              } else {
+                item.style.display = "none";
+              }
+            });
+          });
+        }
+
         selectedDiv.innerHTML = "-- 파일을 선택하세요 --";
         selectElement.value = "";
       } catch (error) {
@@ -718,86 +783,7 @@
     }
 
     
-    // 새로운 규칙 카드에 대한 검색 가능한 selectbox 초기화
-    function initSearchableSelectForRule(ruleNode) {
-        const selectDiv = ruleNode.querySelector('.searchable-select');
-        if (!selectDiv) return;
-        
-        const selectedDiv = selectDiv.querySelector('.select-selected');
-        const itemsDiv = selectDiv.querySelector('.select-items');
-        const searchInput = itemsDiv.querySelector('.select-search');
-        const selectElement = selectDiv.querySelector('select');
-        
-        selectedDiv.addEventListener('click', (e) => {
-            e.stopPropagation();
-            closeAllSelect(selectedDiv);
-            itemsDiv.classList.toggle('select-hide');
-            selectedDiv.classList.toggle('select-arrow-active');
-            // select-box가 열릴 때 검색 필드에 포커스하고 검색어 초기화
-            if (!itemsDiv.classList.contains('select-hide')) {
-                setTimeout(() => {
-                    searchInput.value = '';
-                    searchInput.focus();
-                    // 모든 항목 다시 표시
-                    const items = itemsDiv.querySelectorAll('div:not(.select-search)');
-                    items.forEach(item => item.style.display = "");
-                }, 100);
-            }
-        });
-        
-        // 검색 입력 필드 클릭 시 select-box가 닫히지 않도록 방지
-        searchInput.addEventListener('click', (e) => {
-            e.stopPropagation();
-        });
-        
-        // 검색 필드에서 키보드 이벤트 처리
-        searchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                e.stopPropagation();
-                // 첫 번째 보이는 항목 선택
-                const visibleItems = Array.from(itemsDiv.querySelectorAll('div:not(.select-search)'))
-                    .filter(item => item.style.display !== 'none');
-                if (visibleItems.length > 0) {
-                    visibleItems[0].click();
-                }
-            } else if (e.key === 'Escape') {
-                e.preventDefault();
-                e.stopPropagation();
-                closeAllSelect();
-            }
-        });
-        
-        searchInput.addEventListener('input', (e) => {
-            const filter = e.target.value.toUpperCase();
-            const items = itemsDiv.querySelectorAll('div:not(.select-search)');
-            items.forEach(item => {
-                const txtValue = item.textContent || item.innerText;
-                if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                    item.style.display = "";
-                } else {
-                    item.style.display = "none";
-                }
-            });
-        });
-        
-        const options = selectElement.querySelectorAll('option');
-        options.forEach(option => {
-            if (option.value) {
-                const item = document.createElement('DIV');
-                item.innerHTML = option.innerHTML;
-                item.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    selectedDiv.innerHTML = option.innerHTML;
-                    selectElement.value = option.value;
-                    closeAllSelect();
-                    // 파일 선택 변경 시 자동으로 내용 로드
-                    await loadFileContent(ruleNode);
-                });
-                itemsDiv.appendChild(item);
-            }
-        });
-    }
+    // initSearchableSelectForRule 함수 제거됨 - loadMdFileListForNewRule에서 이벤트 리스너 직접 처리
 
     function normBase(p) {
       if (!p) return '';

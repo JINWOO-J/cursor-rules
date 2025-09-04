@@ -18,7 +18,7 @@ import sys
 import shutil
 import hashlib
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 import yaml
 import google.generativeai as genai
@@ -193,7 +193,9 @@ def translate_markdown(kr_md: str, src_file: Path) -> str:
     fm_en["source_commit"] = git_info["commit_hash"]
     fm_en["source_author"] = git_info["author_name"]
     fm_en["source_date"] = git_info["commit_date"]
-    fm_en["translated_at"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    KST = timezone(timedelta(hours=9))
+    fm_en["translated_at"] = datetime.now(KST).strftime('%Y-%m-%d %H:%M:%S')
 
     # 제목/설명만 번역
     if "title" in fm_en:
