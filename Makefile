@@ -1,4 +1,4 @@
-.PHONY: rules-merge rules-check dev-setup
+.PHONY: rules-merge rules-check dev-setup web
 
 CURSOR_RULES_DIR := cursor-rules
 MERGED := $(CURSOR_RULES_DIR)/generated/_merged.md
@@ -22,3 +22,7 @@ dev-setup:
 	command -v pre-commit >/dev/null || pipx install pre-commit || pip install pre-commit
 	pre-commit install -t pre-commit -t commit-msg || true
 	@$(MAKE) rules-generate
+
+web:
+	python3 scripts/translate_and_copy.py
+	bash scripts/generate_web.sh
